@@ -1,0 +1,25 @@
+# HomeManager の systemd ユニット
+#   sudo cp homemanager.service /etc/systemd/system/
+#   sudo systemctl enable --now homemanager
+[Unit]
+Description=HomeManager
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+# AddSystemd() で起動完了を systemd に通知する
+Type=notify
+WorkingDirectory=/opt/homemanager
+ExecStart=/opt/homemanager/HomeManager.Host
+Restart=always
+RestartSec=5
+KillSignal=SIGINT
+User=homemanager
+# BLE（BlueZ）とシリアル（オムロンの環境センサー）を使うためのグループ（P2）
+SupplementaryGroups=bluetooth dialout
+Environment=ASPNETCORE_ENVIRONMENT=Production
+# 接続文字列などの秘密は環境変数のファイルで渡す（homemanager.env.example を参照）
+EnvironmentFile=-/etc/homemanager/homemanager.env
+
+[Install]
+WantedBy=multi-user.target

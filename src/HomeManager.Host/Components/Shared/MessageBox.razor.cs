@@ -1,0 +1,41 @@
+namespace HomeManager.Host.Components.Shared;
+
+using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
+
+using MudBlazor;
+
+public sealed partial class MessageBox
+{
+    //--------------------------------------------------------------------------------
+    // Parameter
+    //--------------------------------------------------------------------------------
+
+    [Parameter]
+    public required MessageBoxType Type { get; set; }
+
+    [Parameter]
+    public required string Title { get; set; }
+
+    [Parameter]
+    public required string Message { get; set; }
+
+    [CascadingParameter]
+    public required IMudDialogInstance MudDialog { get; set; }
+
+    //--------------------------------------------------------------------------------
+    // Events
+    //--------------------------------------------------------------------------------
+
+    private void OnOkClick() => MudDialog.Close(true);
+
+    private void OnCancelClick() => MudDialog.Close(false);
+
+    private void HandleKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key == "Escape")
+        {
+            MudDialog.Close();
+        }
+    }
+}

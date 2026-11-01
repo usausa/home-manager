@@ -1,0 +1,51 @@
+@inherits LayoutComponentBase
+
+<MudThemeProvider Theme="Styles.Theme" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<MudLayout>
+    <MudAppBar Elevation="1">
+        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="ToggleDrawer" />
+        <MudText Typo="Typo.h6" Class="ml-2">HomeManager</MudText>
+        <MudSpacer />
+        <AuthorizeView>
+            <Authorized>
+                <MudText Class="mr-4">@context.User.Identity?.Name</MudText>
+                @* ReSharper disable Html.PathError *@
+                <form method="post" action="auth/logout">
+                    <AntiforgeryToken />
+                    <MudIconButton Icon="@Icons.Material.Filled.Logout" Color="Color.Inherit" ButtonType="ButtonType.Submit" />
+                </form>
+                @* ReSharper restore Html.PathError *@
+            </Authorized>
+        </AuthorizeView>
+    </MudAppBar>
+    <MudDrawer @bind-Open="drawerOpen" Elevation="2">
+        <NavMenu />
+    </MudDrawer>
+    <MudMainContent Class="pa-4">
+        <ErrorBoundary @ref="errorBoundary">
+            <ChildContent>
+                @Body
+            </ChildContent>
+            <ErrorContent>
+                <MudAlert Severity="Severity.Error" Class="mb-4">エラーが発生しました。</MudAlert>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Recover">再試行</MudButton>
+            </ErrorContent>
+        </ErrorBoundary>
+    </MudMainContent>
+</MudLayout>
+
+@code {
+    private ErrorBoundary? errorBoundary;
+
+    private bool drawerOpen = true;
+
+    private void ToggleDrawer() => drawerOpen = !drawerOpen;
+
+    private void Recover() => errorBoundary?.Recover();
+
+    protected override void OnParametersSet() => errorBoundary?.Recover();
+}

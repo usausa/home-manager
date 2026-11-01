@@ -1,0 +1,27 @@
+<Solution>
+  <Folder Name="/Aspire/">
+    <Project Path="src/HomeManager.AppHost/HomeManager.AppHost.csproj" DefaultStartup="true" />
+  </Folder>
+  <Folder Name="/Application/">
+    <Project Path="src/HomeManager.Core/HomeManager.Core.csproj" />
+    <Project Path="src/HomeManager.Host/HomeManager.Host.csproj" />
+  </Folder>
+  <Folder Name="/Test/">
+    <Project Path="tests/HomeManager.UnitTests/HomeManager.UnitTests.csproj" />
+    <Project Path="tests/HomeManager.IntegrationTests/HomeManager.IntegrationTests.csproj" />
+    <Project Path="tests/HomeManager.E2ETests/HomeManager.E2ETests.csproj" />
+  </Folder>
+  <Folder Name="/Solution Items/">
+    <File Path=".editorconfig" />
+    <File Path=".gitattributes" />
+    <File Path=".gitignore" />
+    <File Path="AGENTS.md" />
+    <File Path="Analyzers.ruleset" />
+    <File Path="CodeCoverage.runsettings" />
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Build.targets" />
+    <File Path="LICENSE" />
+    <File Path="README.md" />
+    <File Path="HomeManager.sln.DotSettings" />
+  </Folder>
+</Solution>

@@ -1,0 +1,41 @@
+@page "/login"
+@attribute [ExcludeFromInteractiveRouting]
+@layout PlainLayout
+
+<PageTitle>Login</PageTitle>
+
+<MudPaper Class="page-card pa-8 mx-auto mt-16">
+    <MudText Typo="Typo.h5" Class="mb-4">Login</MudText>
+
+    <Condition Value="HasError">
+        <MudAlert Severity="Severity.Error" Class="mb-4">IDまたはパスワードが違います。</MudAlert>
+    </Condition>
+
+    @* ReSharper disable Html.PathError *@
+    <form method="post" action="auth/login">
+        <AntiforgeryToken />
+        <input type="hidden" name="returnUrl" value="@ReturnUrl" />
+        <div class="login-field">
+            <label for="name">ID</label>
+            <input id="name" name="name" maxlength="@Length.Name" required autofocus />
+        </div>
+        <div class="login-field">
+            <label for="password">パスワード</label>
+            <input id="password" name="password" type="password" maxlength="@Length.Password" required />
+        </div>
+        <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" FullWidth="true" Class="mt-6">
+            ログイン
+        </MudButton>
+    </form>
+    @* ReSharper restore Html.PathError *@
+</MudPaper>
+
+@code {
+    private bool HasError => !String.IsNullOrEmpty(Error);
+
+    [SupplyParameterFromQuery(Name = "error")]
+    public string? Error { get; set; }
+
+    [SupplyParameterFromQuery(Name = "returnUrl")]
+    public string? ReturnUrl { get; set; }
+}

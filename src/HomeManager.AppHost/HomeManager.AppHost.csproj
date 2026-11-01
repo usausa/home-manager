@@ -1,0 +1,22 @@
+﻿<Project Sdk="Aspire.AppHost.Sdk/13.6.1">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <CodeAnalysisRuleSet>..\..\Analyzers.ruleset</CodeAnalysisRuleSet>
+    <AspireUseCliBundle>true</AspireUseCliBundle>
+    <UserSecretsId>61f3e72b-7bea-491a-82c1-55c9881b1dfc</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.PostgreSQL" Version="13.6.1" />
+    <PackageReference Include="CommunityToolkit.Aspire.Hosting.Mosquitto" Version="13.6.1" />
+    <!-- Transitive pin: GHSA-qhrr-8q5h-9q3h -->
+    <PackageReference Include="MessagePack" Version="2.5.307" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\HomeManager.Host\HomeManager.Host.csproj" />
+  </ItemGroup>
+
+</Project>

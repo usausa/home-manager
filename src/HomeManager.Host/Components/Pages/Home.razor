@@ -1,0 +1,16 @@
+@page "/"
+@attribute [Authorize]
+
+<PageTitle>Home</PageTitle>
+
+<MudText Typo="Typo.h4">Home</MudText>
+<MudText Class="mt-2">HomeManager</MudText>
+<MudText Class="mt-2">接続中の回線: @circuitCount</MudText>
+
+<Condition Value="featureEnabled">
+    <MudChip T="string" Color="Color.Success" Class="mt-4">Feature: CustomOption 有効</MudChip>
+</Condition>
+
+<Condition Value="HasNotification">
+    <MudAlert Severity="Severity.Info" Class="notification-alert mt-4">@lastNotification</MudAlert>
+</Condition>

@@ -1,0 +1,5 @@
+{
+  "appHost": {
+    "path": "src/HomeManager.AppHost/HomeManager.AppHost.csproj"
+  }
+}
