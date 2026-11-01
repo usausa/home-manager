@@ -37,6 +37,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\HomeManager.Core\HomeManager.Core.csproj" />
+    <ProjectReference Include="..\HomeManager.Integration.Demo\HomeManager.Integration.Demo.csproj" />
   </ItemGroup>
 
   <ItemGroup>

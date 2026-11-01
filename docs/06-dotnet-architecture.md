@@ -395,6 +395,18 @@ public interface ITriggerPlatform
 
 > 📏 テンプレートの流儀（プライマリコンストラクターを使わない・Singleton 既定・`[LoggerMessage]`・Result 型なし）に合わせて書く。
 
+#### 🏗️ P1 で実装した形（2026-11-01・上のイメージとの違い）
+
+| 点 | イメージ | 実装 | 理由 |
+|---|---|---|---|
+| 🏷️ エンティティの基底 | `Entity` | **`HomeEntity`** | テンプレートの名前空間 `HomeManager.Models.Entity`（DB の行）と名前がぶつかる（CA1724） |
+| 🔒 派生の制限 | — | `HomeEntity` のコンストラクターは `private protected` | インテグレーションは必ずドメインの基底（`LightEntity` など）から派生させる |
+| 🧾 属性の集め方 | `ExtraAttributes` | ドメインの基底だけが書ける `CollectCapabilityAttributes` / `CollectStateAttributes`（`private protected`）+ インテグレーション用の `ExtraStateAttributes` | HA と同じく「ドメインが決める属性」をインテグレーションが壊せないようにする |
+| 🧩 インテグレーション | `SetupEntryAsync(ConfigEntry, …)` | P1 は **`SetupAsync(IIntegrationContext, …)`**（HA の `async_setup`）。`[Integration("demo", …)]` 属性でメタ情報、DI に `IIntegration` で登録 | Config Entry は P2。`IIntegrationContext` は `AddEntities` と `RunBackground`（停止で止まる処理）だけを渡す |
+| 🧵 Context の引き継ぎ | — | サービスで操作したエンティティに 5 秒だけ操作者の Context を覚えさせる（HA の `async_set_context`） | 「誰が変えたか」を状態に残す（詳細ダイアログの「操作」） |
+| 📣 購読 | `Subscribe(handler, filter, options)` | 同じ。購読者ごとに `Channel` と処理タスク、`Capacity` を付けると溢れたら古いものを捨てる | 画面は合図だけ受け取れればよい |
+| 🗃️ 属性の比較 | — | 中身で比べる（`AttributeComparer`。配列・入れ子の辞書・JSON も） | 同じ値なら `state_reported`、違えば `state_changed`（HA と同じ） |
+
 ### 🤖 6-4. オートメーションの実行エンジン（イメージ）
 
 ```mermaid

@@ -1,0 +1,40 @@
+@page "/"
+@attribute [Authorize]
+
+<PageTitle>概要</PageTitle>
+
+<div class="page-header">
+    <MudText Typo="Typo.h4">🏠 概要</MudText>
+    <MudSpacer />
+    <MudTextField T="string"
+                  Value="search"
+                  ValueChanged="OnSearchChanged"
+                  Placeholder="名前・entity_id で検索"
+                  Adornment="Adornment.Start"
+                  AdornmentIcon="@Icons.Material.Filled.Search"
+                  Clearable="true"
+                  Immediate="true"
+                  DebounceInterval="300"
+                  Variant="Variant.Outlined"
+                  Margin="Margin.Dense"
+                  Class="overview-search" />
+</div>
+
+<Condition Value="groups.Count == 0">
+    <MudAlert Severity="Severity.Info">表示するエンティティがありません。</MudAlert>
+</Condition>
+
+<ListItem Items="groups" Context="group">
+    <ItemTemplate>
+        <MudText Typo="Typo.h6" Class="mt-4 mb-2">@group.Title</MudText>
+        <MudGrid Spacing="2">
+            <ListItem Items="group.States" Context="state">
+                <ItemTemplate>
+                    <MudItem xs="12" sm="6" md="4" lg="3" @key="state.EntityId">
+                        <EntityTile State="state" OnAction="OnTileAction" OnOpen="OnTileOpen" />
+                    </MudItem>
+                </ItemTemplate>
+            </ListItem>
+        </MudGrid>
+    </ItemTemplate>
+</ListItem>

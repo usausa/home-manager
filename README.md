@@ -24,7 +24,19 @@
 | Phase | 内容 | 状態 |
 |:-:|---|:-:|
 | 🏗️ P0 | `template-blazor-server` から派生・見本の機能を削除・DB を PostgreSQL に変更（マイグレーション）・Aspire に PostgreSQL と Mosquitto・配置用ファイル。PostgreSQL 18 での結合テストと Aspire での起動・再起動を確認済み（2026-11-01） | ✅ |
-| 🌱 P1 | コア（EventBus・StateMachine・ServiceRegistry）・仮想デバイス・概要ダッシュボード | ⏳ |
+| 🌱 P1 | コアの 3 本柱（EventBus・StateMachine・ServiceRegistry）・エンティティ（7 ドメイン）・インテグレーション基盤・仮想デバイス・概要ダッシュボード・エンティティ詳細・開発者ツール。**ブラウザ 2 枚で「片方の操作がもう片方に即座に反映」を確認済み（2026-11-01）**。残りは初回セットアップ・プロフィール・全体設定・システム情報 | 🚧 |
+
+### 🖥️ いま使える画面（P1）
+
+| 画面 | URL | できること |
+|---|---|---|
+| 🏠 概要 | `/` | 全エンティティをドメインごとのタイルで表示（開いている全員の画面が即座に変わる）。アイコンで ON / OFF・ボタンを押す、タイルで詳細、名前・entity_id で検索 |
+| 🪟 エンティティ詳細 | （タイルから） | 操作（ON / OFF・明るさ・数値・選択肢・押す）と属性、最終変更の時刻と「誰が操作したか」 |
+| 🗃️ 開発者ツール: 状態 👑 | `/developer-tools/state` | 全状態と属性の一覧・絞り込み、デバッグ用の状態の上書き |
+| 🛎️ 開発者ツール: アクション 👑 | `/developer-tools/action` | サービス（`light.turn_on` など）を選び、対象とデータ（JSON）を入れて実行 |
+| 📣 開発者ツール: イベント 👑 | `/developer-tools/event` | イベントの流れを購読して見る・任意の名前のイベントを発火 |
+
+> 🧪 仮想デバイス（`HomeManager.Integration.Demo`）: 照明 3・スイッチ 2・センサー 4（温度・湿度・CO2・洗濯機の電力）・2 値センサー 2（人感・ドア）・ボタン・数値・選択肢。センサーは 5 秒ごとに値が動く。👑 = 管理者だけ
 
 ---
 
@@ -34,8 +46,14 @@
 HomeManager.slnx
 ├── src/
 │   ├── HomeManager.AppHost/   🚀 Aspire（開発時: Host + PostgreSQL + pgweb + Mosquitto）
-│   ├── HomeManager.Core/      🧠 ASP.NET に依存しない部分（Accessors / Services / Models / Infrastructure / Domain）
-│   └── HomeManager.Host/      🖥️ Blazor Server + Minimal API（Assets/Data/Migrations に番号付きの SQL）
+│   ├── HomeManager.Core/      🧠 ASP.NET に依存しない部分
+│   │   ├── Domain/            EntityState・EventContext・イベント・定数（ドメイン・属性・device_class）
+│   │   ├── Services/          EventBus・StateMachine・ServiceRegistry（HA の 3 本柱）・アカウント・DB
+│   │   ├── Platforms/         エンティティの基底（HomeEntity・LightEntity …）・EntityManager・ドメインのサービス（light.turn_on …）
+│   │   ├── Integrations/      IIntegration・IntegrationManager（インテグレーションの読み込みと停止）
+│   │   └── Accessors/ Models/ Infrastructure/
+│   ├── HomeManager.Integration.Demo/  🧪 仮想デバイス（1 インテグレーション = 1 プロジェクト）
+│   └── HomeManager.Host/      🖥️ Blazor Server + Minimal API（Assets/Data/Migrations に番号付きの SQL・Workers/IntegrationWorker）
 ├── tests/
 │   ├── HomeManager.UnitTests/         🧪 単体（xUnit v3・bUnit）
 │   ├── HomeManager.IntegrationTests/  🔌 結合（WebApplicationFactory + PostgreSQL のコンテナ）
@@ -67,7 +85,8 @@ aspire run
 
 - AppHost が PostgreSQL（+ pgweb）・Mosquitto・HomeManager.Host を起動し、ダッシュボードが開く
 - 接続文字列は Aspire が `ConnectionStrings__Default` として渡す（`appsettings.json` の既定値は `localhost:5432` の PostgreSQL）
-- 初期ユーザーは `admin` / `admin`（P1 で初回にパスワードの変更を必須にする）
+- 初期ユーザーは `admin` / `admin`（初回のパスワード変更の画面は P1 の残り）
+- 起動するとインテグレーション（P1 は仮想デバイスだけ）が読み込まれ、概要にタイルが並ぶ。ブラウザを 2 つ開いて片方で照明を切り替えると、もう片方も変わる
 - DB のスキーマは起動時に `src/HomeManager.Host/Assets/Data/Migrations/*.sql` を番号順に適用する（適用した版は `core.SchemaVersion`）
 
 ### テスト

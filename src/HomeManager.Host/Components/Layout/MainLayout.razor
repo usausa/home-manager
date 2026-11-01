@@ -25,16 +25,19 @@
     <MudDrawer @bind-Open="drawerOpen" Elevation="2">
         <NavMenu />
     </MudDrawer>
-    <MudMainContent Class="pa-4">
-        <ErrorBoundary @ref="errorBoundary">
-            <ChildContent>
-                @Body
-            </ChildContent>
-            <ErrorContent>
-                <MudAlert Severity="Severity.Error" Class="mb-4">エラーが発生しました。</MudAlert>
-                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Recover">再試行</MudButton>
-            </ErrorContent>
-        </ErrorBoundary>
+    <MudMainContent>
+        @* 余白は内側に付ける (MudMainContent に pa-4 を付けると上部バーの分の余白が消え、ページの見出しがバーに隠れる) *@
+        <div class="pa-4">
+            <ErrorBoundary @ref="errorBoundary">
+                <ChildContent>
+                    @Body
+                </ChildContent>
+                <ErrorContent>
+                    <MudAlert Severity="Severity.Error" Class="mb-4">エラーが発生しました。</MudAlert>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Recover">再試行</MudButton>
+                </ErrorContent>
+            </ErrorBoundary>
+        </div>
     </MudMainContent>
 </MudLayout>
 

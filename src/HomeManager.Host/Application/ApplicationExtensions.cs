@@ -17,6 +17,7 @@ using HomeManager.Host.Endpoints;
 using HomeManager.Host.Infrastructure.Logging;
 using HomeManager.Host.Infrastructure.Security;
 using HomeManager.Infrastructure.Security;
+using HomeManager.Integration.Demo;
 
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
@@ -411,6 +412,9 @@ public static class ApplicationExtensions
         builder.Services.AddSingleton<Circuits.CircuitTracker>();
         builder.Services.AddScoped<Microsoft.AspNetCore.Components.Server.Circuits.CircuitHandler, Circuits.AppCircuitHandler>();
 
+        // Entity operation (画面からの機器の操作)
+        builder.Services.AddScoped<Components.Entities.EntityOperations>();
+
         // MudBlazor
         builder.Services.AddMudServices(static options =>
         {
@@ -581,11 +585,12 @@ public static class ApplicationExtensions
 
         builder.Services.AddCoreServices();
 
-        // Notification
-        builder.Services.AddSingleton<Infrastructure.Notifications.NotificationBus>();
-        builder.Services.AddOptions<Workers.NotificationWorkerOption>().BindConfiguration("Notification").ValidateDataAnnotations().ValidateOnStart();
-        builder.Services.AddSingleton(static p => p.GetRequiredService<IOptions<Workers.NotificationWorkerOption>>().Value);
-        builder.Services.AddHostedService<Workers.NotificationWorker>();
+        // Core (イベントバス・ステートマシン・サービス・エンティティ・インテグレーション)
+        builder.Services.AddCoreRuntime();
+
+        // Integration (1インテグレーション = 1プロジェクト。P1は仮想デバイスだけ)
+        builder.Services.AddDemoIntegration();
+        builder.Services.AddHostedService<Workers.IntegrationWorker>();
 
         // Setting
         builder.Services.AddOptions<ProfilerSetting>().BindConfiguration("Profiler").ValidateDataAnnotations().ValidateOnStart();

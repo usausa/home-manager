@@ -1,3 +1,10 @@
 <MudNavMenu>
-    <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">Home</MudNavLink>
+    <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">概要</MudNavLink>
+    <AuthorizeView Policy="@Policies.Administrator">
+        <MudNavGroup Title="開発者ツール" Icon="@Icons.Material.Filled.DeveloperMode" Expanded="true">
+            <MudNavLink Href="developer-tools/state" Icon="@Icons.Material.Filled.DataObject">状態</MudNavLink>
+            <MudNavLink Href="developer-tools/action" Icon="@Icons.Material.Filled.PlayArrow">アクション</MudNavLink>
+            <MudNavLink Href="developer-tools/event" Icon="@Icons.Material.Filled.Campaign">イベント</MudNavLink>
+        </MudNavGroup>
+    </AuthorizeView>
 </MudNavMenu>

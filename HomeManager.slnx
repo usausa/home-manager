@@ -6,6 +6,9 @@
     <Project Path="src/HomeManager.Core/HomeManager.Core.csproj" />
     <Project Path="src/HomeManager.Host/HomeManager.Host.csproj" />
   </Folder>
+  <Folder Name="/Integration/">
+    <Project Path="src/HomeManager.Integration.Demo/HomeManager.Integration.Demo.csproj" />
+  </Folder>
   <Folder Name="/Test/">
     <Project Path="tests/HomeManager.UnitTests/HomeManager.UnitTests.csproj" />
     <Project Path="tests/HomeManager.IntegrationTests/HomeManager.IntegrationTests.csproj" />

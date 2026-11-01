@@ -34,5 +34,8 @@ global using Smart.Text;
 
 // ReSharper disable MissingBlankLines
 global using HomeManager.Domain;
+global using HomeManager.Integrations;
 global using HomeManager.Models;
 global using HomeManager.Models.Entity;
+global using HomeManager.Platforms;
+global using HomeManager.Services;

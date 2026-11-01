@@ -1,0 +1,68 @@
+@page "/developer-tools/action"
+@attribute [Authorize(Policy = Policies.Administrator)]
+
+<PageTitle>アクション</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">🛎️ アクション</MudText>
+
+<MudPaper Outlined="true" Class="pa-4">
+    <MudText Typo="Typo.body2" Class="mb-4 mud-text-secondary">サービスを選び、対象とデータ（JSON）を入れて実行します。画面・オートメーション・API から呼ぶのと同じ経路です。</MudText>
+
+    <MudSelect T="string" Value="selectedService" ValueChanged="OnServiceChanged" Label="サービス" Variant="Variant.Outlined">
+        <ListItem Items="services" Context="definition">
+            <ItemTemplate>
+                <MudSelectItem Value="definition.FullName">@definition.FullName — @definition.Description</MudSelectItem>
+            </ItemTemplate>
+        </ListItem>
+    </MudSelect>
+
+    <Condition Value="HasTarget">
+        <MudSelect T="string"
+                   MultiSelection="true"
+                   SelectedValues="selectedEntities"
+                   SelectedValuesChanged="OnEntitiesChanged"
+                   Label="対象のエンティティ"
+                   Variant="Variant.Outlined"
+                   Class="mt-4">
+            <ListItem Items="candidates" Context="candidate">
+                <ItemTemplate>
+                    <MudSelectItem Value="candidate.EntityId">@candidate.Name（@candidate.EntityId）</MudSelectItem>
+                </ItemTemplate>
+            </ListItem>
+        </MudSelect>
+    </Condition>
+
+    <Condition Value="HasFields">
+        <MudSimpleTable Dense="true" Class="mt-4">
+            <thead>
+                <tr>
+                    <th>項目</th>
+                    <th>説明</th>
+                    <th>例</th>
+                </tr>
+            </thead>
+            <tbody>
+                <ListItem Items="Fields" Context="item">
+                    <ItemTemplate>
+                        <tr>
+                            <td>@item.Name@(item.Required ? "（必須）" : string.Empty)</td>
+                            <td>@item.Description</td>
+                            <td>@item.Example</td>
+                        </tr>
+                    </ItemTemplate>
+                </ListItem>
+            </tbody>
+        </MudSimpleTable>
+    </Condition>
+
+    <MudTextField T="string" @bind-Value="dataText" Label="データ（JSON）" Lines="5" Variant="Variant.Outlined" Class="mt-4 tool-editor" />
+
+    <MudStack Row="true" Class="mt-4">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PlayArrow" Disabled="!CanExecute" OnClick="OnExecuteClick">実行</MudButton>
+        <MudButton Variant="Variant.Outlined" Disabled="!HasFields" OnClick="OnExampleClick">例を入れる</MudButton>
+    </MudStack>
+</MudPaper>
+
+<Condition Value="HasResult">
+    <MudAlert Severity="resultSeverity" Class="mt-4">@resultMessage</MudAlert>
+</Condition>

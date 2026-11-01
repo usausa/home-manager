@@ -1,0 +1,55 @@
+@page "/developer-tools/state"
+@attribute [Authorize(Policy = Policies.Administrator)]
+
+<PageTitle>状態</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">🗃️ 状態</MudText>
+
+<MudPaper Outlined="true" Class="pa-4 mb-4">
+    <MudText Typo="Typo.h6">状態を設定</MudText>
+    <MudText Typo="Typo.body2" Class="mb-2 mud-text-secondary">ステートマシン上の状態だけを書き換えます（機器は操作しません）。機器が次に値を送ると上書きされます。一覧の entity_id を押すと、その状態を読み込みます。</MudText>
+    <MudTextField T="string" @bind-Value="editEntityId" Label="entity_id" Variant="Variant.Outlined" Margin="Margin.Dense" />
+    <MudTextField T="string" @bind-Value="editState" Label="状態" Variant="Variant.Outlined" Margin="Margin.Dense" Class="mt-2" />
+    <MudTextField T="string" @bind-Value="editAttributes" Label="属性（JSON）" Lines="6" Variant="Variant.Outlined" Class="mt-2 tool-editor" />
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Save" Class="mt-2" OnClick="OnSetClick">設定</MudButton>
+</MudPaper>
+
+<div class="page-header">
+    <MudTextField T="string"
+                  Value="filter"
+                  ValueChanged="OnFilterChanged"
+                  Placeholder="entity_id・名前・状態で絞り込み"
+                  Adornment="Adornment.Start"
+                  AdornmentIcon="@Icons.Material.Filled.Search"
+                  Clearable="true"
+                  Immediate="true"
+                  DebounceInterval="300"
+                  Variant="Variant.Outlined"
+                  Margin="Margin.Dense"
+                  Class="tool-filter" />
+    <MudText Typo="Typo.body2">@states.Count 件</MudText>
+</div>
+
+<MudSimpleTable Dense="true" Hover="true">
+    <thead>
+        <tr>
+            <th>エンティティ</th>
+            <th>状態</th>
+            <th>属性</th>
+        </tr>
+    </thead>
+    <tbody>
+        <ListItem Items="states" Context="state">
+            <ItemTemplate>
+                <tr @key="state.EntityId">
+                    <td>
+                        <MudLink OnClick="() => OnEditClick(state)">@state.EntityId</MudLink>
+                        <MudText Typo="Typo.caption" Class="d-block mud-text-secondary">@state.Name</MudText>
+                    </td>
+                    <td>@state.State</td>
+                    <td><pre class="tool-json">@JsonFormatter.FormatAttributes(state.Attributes)</pre></td>
+                </tr>
+            </ItemTemplate>
+        </ListItem>
+    </tbody>
+</MudSimpleTable>

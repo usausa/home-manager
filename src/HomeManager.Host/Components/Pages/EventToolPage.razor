@@ -1,0 +1,50 @@
+@page "/developer-tools/event"
+@attribute [Authorize(Policy = Policies.Administrator)]
+
+<PageTitle>イベント</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">📣 イベント</MudText>
+
+<MudGrid>
+    <MudItem xs="12" md="6">
+        <MudPaper Outlined="true" Class="pa-4">
+            <MudText Typo="Typo.h6">イベントを発火</MudText>
+            <MudText Typo="Typo.body2" Class="mb-2 mud-text-secondary">任意の名前のイベントを流します（オートメーションのイベントトリガーの確認用）。</MudText>
+            <MudTextField T="string" @bind-Value="fireType" Label="イベントの種別" Placeholder="my_event" Variant="Variant.Outlined" Margin="Margin.Dense" />
+            <MudTextField T="string" @bind-Value="fireData" Label="データ（JSON）" Lines="4" Variant="Variant.Outlined" Class="mt-2 tool-editor" />
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Send" Class="mt-2" OnClick="OnFireClick">発火</MudButton>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" md="6">
+        <MudPaper Outlined="true" Class="pa-4">
+            <MudText Typo="Typo.h6">イベントを購読</MudText>
+            <MudText Typo="Typo.body2" Class="mb-2 mud-text-secondary">流れたイベントを新しい順に表示します（最大 @MaxEvents 件）。種別が空ならすべてを受け取ります。</MudText>
+            <MudSelect T="string" @bind-Value="listenType" Label="購読する種別" Variant="Variant.Outlined" Margin="Margin.Dense" Clearable="true" Disabled="Listening">
+                <ListItem Items="EventTypes.Known" Context="type">
+                    <ItemTemplate>
+                        <MudSelectItem Value="type">@type</MudSelectItem>
+                    </ItemTemplate>
+                </ListItem>
+            </MudSelect>
+            <MudTextField T="string" @bind-Value="listenCustomType" Label="その他の種別（任意の名前）" Variant="Variant.Outlined" Margin="Margin.Dense" Class="mt-2" Disabled="Listening" />
+            <MudStack Row="true" Class="mt-2">
+                <Condition Value="!Listening">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PlayArrow" OnClick="OnStartClick">購読を開始</MudButton>
+                </Condition>
+                <Condition Value="Listening">
+                    <MudButton Variant="Variant.Filled" Color="Color.Error" StartIcon="@Icons.Material.Filled.Stop" OnClick="OnStopClick">購読を停止</MudButton>
+                </Condition>
+                <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Clear" OnClick="OnClearClick">クリア</MudButton>
+            </MudStack>
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+<ListItem Items="received" Context="item">
+    <ItemTemplate>
+        <MudPaper Outlined="true" Class="pa-3 mt-2" @key="item.Number">
+            <MudText Typo="Typo.subtitle2">#@item.Number　@item.EventType　@item.Time</MudText>
+            <pre class="tool-json">@item.Json</pre>
+        </MudPaper>
+    </ItemTemplate>
+</ListItem>

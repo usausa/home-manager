@@ -1,0 +1,16 @@
+<MudPaper Outlined="true" Class="@TileClass" @onclick="OnTileClick">
+    <div class="entity-tile-body">
+        <span @onclick:stopPropagation="true">
+            <MudIconButton Icon="@EntityFormatter.GetIcon(State)"
+                           Color="@EntityFormatter.GetColor(State)"
+                           Disabled="@(!EntityFormatter.IsAvailable(State))"
+                           aria-label="@ActionLabel"
+                           title="@ActionLabel"
+                           OnClick="OnIconClick" />
+        </span>
+        <div class="entity-tile-text">
+            <MudText Typo="Typo.subtitle2" Class="entity-tile-name">@State.Name</MudText>
+            <MudText Typo="Typo.body2" Class="mud-text-secondary">@EntityFormatter.FormatState(State)</MudText>
+        </div>
+    </div>
+</MudPaper>

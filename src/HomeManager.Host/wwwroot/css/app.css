@@ -26,24 +26,90 @@ html, body {
     max-width: 400px;
 }
 
+.page-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
 .search-field {
     max-width: 240px;
-}
-
-.upload-progress {
-    max-width: 400px;
-}
-
-.notification-alert {
-    max-width: 400px;
 }
 
 .text-right {
     text-align: right;
 }
 
-.files-table {
-    max-width: 640px;
+/* Overview */
+.overview-search {
+    max-width: 320px;
+}
+
+/* Entity tile (CARD-01) */
+.entity-tile {
+    cursor: pointer;
+    height: 100%;
+    transition: background-color 0.2s;
+}
+
+.entity-tile:hover {
+    background-color: var(--mud-palette-action-default-hover);
+}
+
+.entity-tile-active {
+    border-color: var(--mud-palette-warning);
+}
+
+.entity-tile-body {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px 8px 4px;
+}
+
+.entity-tile-text {
+    min-width: 0;
+}
+
+.entity-tile-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Entity detail dialog (DLG-01) */
+.entity-dialog-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.entity-dialog-range {
+    display: flex;
+    justify-content: space-between;
+}
+
+.entity-attributes td {
+    word-break: break-all;
+}
+
+/* Developer tools */
+.tool-editor textarea {
+    font-family: Consolas, "Courier New", monospace;
+}
+
+.tool-json {
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 0.8125rem;
+    white-space: pre-wrap;
+    word-break: break-all;
+    margin: 0;
+}
+
+.tool-filter {
+    max-width: 360px;
 }
 
 /* Table column width */

@@ -445,15 +445,23 @@ sequenceDiagram
 
 画面と REST / Hub はすべてここを通る。Core に置き、ASP.NET には依存しない（[06](06-dotnet-architecture.md) §5）。
 
+> ✅ = P1 で実装済み（2026-11-01）。
+> 📏 **名前の決まり**: インターフェースのメソッドに `Get` / `Set` / `Select` / `Option` などの **VB の予約語**は使えない（コード分析 CA1716）ため、`IStateMachine` は `GetState` / `SetState` のように名詞を付ける。引数なしの `GetXxx()` も使えない（CA1024）ため、一覧は `ListXxx()` にする。
+> 🧩 概要（SCR-101）の組み立ては P1 では画面の中で行う（ドメインごとに並べるだけのため）。エリアで並べる P2 で `IDashboardService.GenerateOverview` に移す。
+> 🛎️ P1 のサービス: `homemanager.turn_on / turn_off / toggle`・`light.turn_on / turn_off / toggle`・`switch.turn_on / turn_off / toggle`・`button.press`・`number.set_value`・`select.select_option / select_next / select_previous / select_first / select_last`（`homemanager.reload_core_config` は全体設定と一緒に P1 の残り）。
+> 📣 P1 のイベント: `state_changed`・`state_reported`・`call_service`・`service_registered`・`service_removed`・`component_loaded`・`homemanager_start / started / stop`・任意の名前（開発者ツールから発火）。
+
 | インターフェース | 主なメソッド | 使う画面・API | Phase |
 |---|---|---|:-:|
-| 📣 `IEventBus` | `Publish` / `Subscribe` | 全体 | P1 |
-| 🗃️ `IStateMachine` | `Get` / `GetAll(filter)` / `Set` / `Remove` | 概要・開発者ツール・API-020〜023 | P1 |
-| 🛎️ `IServiceRegistry` | `Register` / `Remove` / `GetServices` / `CallAsync` | 全画面の操作・API-030〜031・HUB-05 | P1 |
+| 📣 `IEventBus` ✅ | `Publish` / `Subscribe<TEvent>(handler, filter, options)` | 全体 | P1 |
+| 🗃️ `IStateMachine` ✅ | `GetState` / `GetStates(domain)` / `SetState` / `RemoveState` | 概要・開発者ツール・API-020〜023 | P1 |
+| 🛎️ `IServiceRegistry` ✅ | `Register` / `Remove` / `Contains` / `FindDefinition` / `ListServices` / `CallAsync` | 全画面の操作・API-030〜031・HUB-05 | P1 |
+| 💡 `EntityManager` ✅ | `AddEntities` / `RemoveEntity` / `RemovePlatform` / `CallEntitiesAsync` | インテグレーション・ドメインのサービス | P1 |
+| 🧩 `IntegrationManager` ✅ | `StartAsync` / `StopAsync` / `ListIntegrations` | `IntegrationWorker`・SCR-362 | P1 |
 | 🌍 `ICoreConfigService` | `Get` / `Update` | SCR-002・361・API-004 | P1 |
 | ℹ️ `ISystemInfoService` | `GetInfo` | SCR-362・API-005 | P1 |
 | 👤 `IAccountService` | `Authenticate` / `List` / `Create` / `Update` / `ChangePassword` / `SetEnabled` | SCR-001〜003・351 | P1 / P5 |
-| 🧱 `IDashboardService` | `GenerateOverview`（P1）/ `List` / `Get` / `Save` / `Delete`（P4） | SCR-101・102・341 | P1 / P4 |
+| 🧱 `IDashboardService` | `GenerateOverview`（P2）/ `List` / `Get` / `Save` / `Delete`（P4） | SCR-101・102・341 | P2 / P4 |
 | 🎯 `ITargetResolver` | `Resolve(target)` → entityIds | サービス呼び出し | P2 |
 | 🧩 `IIntegrationCatalog` | `List` / `Get(domain)`（属性のメタ情報） | SCR-311 | P2 |
 | ⚙️ `IConfigEntryManager` | `List` / `Get` / `Update` / `Reload` / `SetDisabled` / `Remove` / `GetState` | SCR-311・312 | P2 |
