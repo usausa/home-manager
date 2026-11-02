@@ -78,6 +78,28 @@ public sealed class SystemServiceTests : IClassFixture<TestApplicationFactory>
         Assert.Equal(current.Version + 1, service.Config.Version);
     }
 
+    // 形が違う JSON は既定値で読む (起動や読み直しを止めない)
+    [Fact]
+    public async Task InvalidSettingJsonUsesDefaults()
+    {
+        // Arrange
+        var coreConfig = factory.Services.GetRequiredService<ICoreConfigService>();
+        var onboarding = factory.Services.GetRequiredService<IOnboardingService>();
+        var accessor = factory.Services.GetRequiredService<SettingAccessor>();
+        var cancel = TestContext.Current.CancellationToken;
+        var now = TimeProvider.System.GetUtcNow().UtcDateTime;
+        await accessor.UpsertAsync("core.config", """{ "name": 1 }""", now, cancel);
+        await accessor.UpsertAsync("core.onboarding", """{ "done": "core_config" }""", now, cancel);
+
+        // Act
+        await coreConfig.LoadAsync(EventContext.Create("test"), cancel);
+        await onboarding.LoadAsync(cancel);
+
+        // Assert
+        Assert.Equal(new CoreConfig().Name, coreConfig.Config.Name);
+        Assert.False(onboarding.IsDone(OnboardingSteps.CoreConfig));
+    }
+
     [Fact]
     public async Task OnboardingStepIsSaved()
     {

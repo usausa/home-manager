@@ -117,6 +117,13 @@ public sealed partial class StateToolPage
             return;
         }
 
+        var state = editState?.Trim() ?? string.Empty;
+        if (state.Length > StateValues.MaxLength)
+        {
+            Snackbar.AddError(String.Create(CultureInfo.InvariantCulture, $"状態は {StateValues.MaxLength} 文字以内で入力してください。"));
+            return;
+        }
+
         if (!JsonFormatter.TryParseObject(editAttributes, out var json, out var error))
         {
             Snackbar.AddError(error);
@@ -124,7 +131,7 @@ public sealed partial class StateToolPage
         }
 
         var attributes = json is null ? null : AttributeJson.ToAttributes(json);
-        StateMachine.SetState(entityId, editState?.Trim() ?? string.Empty, attributes, ContextProvider.CreateEventContext());
+        StateMachine.SetState(entityId, state, attributes, ContextProvider.CreateEventContext());
         Snackbar.AddSuccess($"{entityId} の状態を設定しました。");
         Reload();
     }

@@ -14,7 +14,7 @@
 | 🔐 | 画面は **Cookie**。外部は **JWT（30 分）+ リフレッシュトークン** か **長期アクセストークン（`X-Api-Key`）** |
 | ⚠️ | 状態の**上書き**（`PUT /states`）と機器の**操作**（`POST /services`）をはっきり分ける（HA と同じ） |
 | ⚡ | リアルタイムは SignalR の `/hubs/home`。HA と同じ**差分圧縮（a / c / r）**で送る |
-| 📊 | REST 約 40 本・Hub メソッド 7・サービス約 80・イベント約 20・内部 API 34 インターフェース |
+| 📊 | REST 約 40 本・Hub メソッド 7・サービス約 80・イベント約 20・内部 API 35（インターフェースとクラス） |
 
 ---
 
@@ -115,7 +115,7 @@ sequenceDiagram
     autonumber
     participant APP as 📱 アプリ
     participant API as 🌐 /api/v1
-    participant DB as 🐘 DB
+    participant DB as 🪶 DB
     APP->>API: POST /auth/login {id, password}
     API->>DB: Account を照合（PBKDF2）
     API->>DB: リフレッシュトークンのハッシュを保存
@@ -144,7 +144,7 @@ curl -H "X-Api-Key: hm_q3Z9...." https://home.local:8080/api/v1/states/sensor.li
 
 | ID | メソッド | パス | 概要 | 権限 | Phase |
 |---|:-:|---|---|:-:|:-:|
-| API-001 | GET | `/health` | 稼働確認（DB・MQTT の接続も含む）※テンプレート | 誰でも | P0 |
+| API-001 | GET | `/health` | 稼働確認（DB の接続も含む。MQTT は P2 で足す）※テンプレート | 誰でも | P0 |
 | API-002 | GET | `/alive` | 生存確認 ※テンプレート | 誰でも | P0 |
 | API-003 | GET | `/api/v1` | API の稼働確認とバージョン（P0 で先に実装。結合テストの対象） | 👀 | P0 |
 | API-004 | GET | `/api/v1/config` | 全体設定（家の名前・位置・単位・タイムゾーン・バージョン） | 👀 | P5 |
@@ -257,7 +257,7 @@ curl -H "X-Api-Key: hm_q3Z9...." https://home.local:8080/api/v1/states/sensor.li
   },
   "lastChanged": "2026-10-31T09:00:00Z",
   "lastUpdated": "2026-10-31T09:00:05Z",
-  "context": { "id": "0192f3a0-7c4e-7b1a-9d2e-5f1c3a2b4d6e", "userId": 1, "parentId": null }
+  "context": { "id": "0192f3a0-7c4e-7b1a-9d2e-5f1c3a2b4d6e", "userId": "admin", "parentId": null }
 }
 ```
 
@@ -277,7 +277,7 @@ Content-Type: application/json
 ```json
 {
   "changedStates": [
-    { "entityId": "light.living_ceiling", "state": "on", "attributes": { "brightness": 128 }, "lastChanged": "2026-10-31T09:10:00Z", "lastUpdated": "2026-10-31T09:10:00Z", "context": { "id": "0192f3b1-...", "userId": 1, "parentId": null } }
+    { "entityId": "light.living_ceiling", "state": "on", "attributes": { "brightness": 128 }, "lastChanged": "2026-10-31T09:10:00Z", "lastUpdated": "2026-10-31T09:10:00Z", "context": { "id": "0192f3b1-...", "userId": "admin", "parentId": null } }
   ],
   "response": null
 }
@@ -445,7 +445,7 @@ sequenceDiagram
 
 画面と REST / Hub はすべてここを通る。Core に置き、ASP.NET には依存しない（[06](06-dotnet-architecture.md) §5）。
 
-> ✅ = P1 で実装済み（2026-11-01）。
+> ✅ = P1 で実装済み（2026-11-01〜02）。
 > 📏 **名前の決まり**: インターフェースのメソッドに `Get` / `Set` / `Select` / `Option` などの **VB の予約語**は使えない（コード分析 CA1716）ため、`IStateMachine` は `GetState` / `SetState` のように名詞を付ける。引数なしの `GetXxx()` も使えない（CA1024）ため、一覧は `ListXxx()` にする。
 > 🧩 概要（SCR-101）の組み立ては P1 では画面の中で行う（ドメインごとに並べるだけのため）。エリアで並べる P2 で `IDashboardService.GenerateOverview` に移す。
 > 🛎️ P1 のサービス: `homemanager.turn_on / turn_off / toggle`・`light.turn_on / turn_off / toggle`・`switch.turn_on / turn_off / toggle`・`button.press`・`number.set_value`・`select.select_option / select_next / select_previous / select_first / select_last`・`homemanager.reload_core_config`（全体設定を DB から読み直す。2026-11-02）。

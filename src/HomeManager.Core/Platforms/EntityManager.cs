@@ -83,7 +83,7 @@ public sealed class EntityManager
                     continue;
                 }
 
-                var objectId = entity.SuggestedObjectId ?? EntityIds.Slugify(entity.Name);
+                var objectId = EntityIds.Slugify(entity.SuggestedObjectId ?? entity.Name);
                 entity.Platform = platform;
                 entity.EntityId = GenerateEntityId(entity.Domain, objectId.Length > 0 ? objectId : platform);
                 entity.Manager = this;

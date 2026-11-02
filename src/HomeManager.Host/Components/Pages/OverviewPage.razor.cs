@@ -19,6 +19,8 @@ public sealed partial class OverviewPage
 
     private StateSubscription? subscription;
 
+    private IDisposable? configSubscription;
+
     //--------------------------------------------------------------------------------
     // Property
     //--------------------------------------------------------------------------------
@@ -67,6 +69,9 @@ public sealed partial class OverviewPage
                 Reload();
                 StateHasChanged();
             }));
+
+        // 全体設定が変わったら描き直す (見出しの家の名前・時刻のタイムゾーン)
+        configSubscription = EventBus.Subscribe<CoreConfigUpdatedEvent>((_, _) => new ValueTask(InvokeAsync(StateHasChanged)));
     }
 
     protected override void Dispose(bool disposing)
@@ -74,6 +79,7 @@ public sealed partial class OverviewPage
         if (disposing)
         {
             subscription?.Dispose();
+            configSubscription?.Dispose();
         }
 
         base.Dispose(disposing);

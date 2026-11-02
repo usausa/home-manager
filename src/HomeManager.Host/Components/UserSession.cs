@@ -41,8 +41,20 @@ public sealed class UserSession
         (Profile is not null) &&
         (Profile.MustChangePassword || (IsAdministrator && !onboardingService.IsDone(OnboardingSteps.CoreConfig)));
 
-    // 回線で最初の1回だけ読む (同時に呼ばれても読むのは1回)
-    public Task LoadAsync() => loading ??= ReloadAsync();
+    // 回線で最初の1回だけ読む (同時に呼ばれても読むのは1回。失敗したら次の呼び出しで読み直す)
+    public async Task LoadAsync()
+    {
+        loading ??= ReloadAsync();
+        try
+        {
+            await loading;
+        }
+        catch
+        {
+            loading = null;
+            throw;
+        }
+    }
 
     // 変更を保存した後に読み直し、表示中の部品に知らせる
     public async Task ReloadAsync()

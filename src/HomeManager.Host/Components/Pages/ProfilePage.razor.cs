@@ -11,17 +11,11 @@ public sealed partial class ProfilePage
 {
     private MudForm? profileForm;
 
-    private MudForm? passwordForm;
+    private PasswordChangeForm? passwordForm;
 
     private string? displayName;
 
     private string theme = ThemeModes.Auto;
-
-    private string? currentPassword;
-
-    private string? newPassword;
-
-    private string? confirmPassword;
 
     private bool busy;
 
@@ -63,8 +57,6 @@ public sealed partial class ProfilePage
     //--------------------------------------------------------------------------------
     // Event
     //--------------------------------------------------------------------------------
-
-    private string? ValidateConfirm(string? value) => AccountMessages.ValidateConfirm(value, newPassword);
 
     private async Task OnProfileSaveAsync()
     {
@@ -125,13 +117,7 @@ public sealed partial class ProfilePage
 
     private async Task OnPasswordChangeAsync()
     {
-        if ((passwordForm is null) || (Session.Profile is null))
-        {
-            return;
-        }
-
-        await passwordForm.ValidateAsync();
-        if (!passwordForm.IsValid)
+        if ((passwordForm is null) || (Session.Profile is null) || !await passwordForm.ValidateAsync())
         {
             return;
         }
@@ -139,7 +125,7 @@ public sealed partial class ProfilePage
         busy = true;
         try
         {
-            var status = await AccountService.ChangePasswordAsync(Session.Profile.Name, currentPassword ?? string.Empty, newPassword ?? string.Empty);
+            var status = await AccountService.ChangePasswordAsync(Session.Profile.Name, passwordForm.CurrentPassword ?? string.Empty, passwordForm.NewPassword ?? string.Empty);
             if (status != PasswordChangeStatus.Success)
             {
                 Snackbar.AddError(AccountMessages.GetPasswordError(status));
@@ -147,10 +133,7 @@ public sealed partial class ProfilePage
             }
 
             await Session.ReloadAsync();
-            currentPassword = null;
-            newPassword = null;
-            confirmPassword = null;
-            await passwordForm.ResetValidationAsync();
+            await passwordForm.ResetAsync();
             Snackbar.AddSuccess("パスワードを変えました。");
         }
         finally

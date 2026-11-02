@@ -22,7 +22,7 @@ public sealed class DatabaseService
         this.timeProvider = timeProvider;
     }
 
-    // 番号付きのSQLファイル(0001_xxx.sql)を番号順に適用し、適用した版をcore.SchemaVersionに記録する
+    // 番号付きのSQLファイル(0001_xxx.sql)を番号順に適用し、適用した版をSchemaVersionに記録する
     public async ValueTask MigrateAsync(string directory, CancellationToken cancellationToken = default)
     {
         var migrations = await LoadMigrationsAsync(directory, cancellationToken);

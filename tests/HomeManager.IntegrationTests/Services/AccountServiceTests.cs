@@ -2,7 +2,6 @@ namespace HomeManager.Services;
 
 using HomeManager.Accessors;
 using HomeManager.Domain;
-using HomeManager.Host.Application.Context;
 using HomeManager.Infrastructure.Security;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -23,7 +22,6 @@ public sealed class AccountServiceTests : IClassFixture<TestApplicationFactory>
         // Arrange
         var service = factory.Services.GetRequiredService<IAccountService>();
         var cancel = TestContext.Current.CancellationToken;
-        using var scope = BeginScope();
 
         // Act
         var initial = await service.FindProfileAsync("admin", cancel);
@@ -31,8 +29,8 @@ public sealed class AccountServiceTests : IClassFixture<TestApplicationFactory>
         var success = await service.ChangePasswordAsync("admin", "admin", "new-password", cancel);
         var changed = await service.FindProfileAsync("admin", cancel);
         var same = await service.ChangePasswordAsync("admin", "new-password", "new-password", cancel);
-        var authenticated = await service.AuthenticateAsync("admin", "new-password");
-        var old = await service.AuthenticateAsync("admin", "admin");
+        var authenticated = await service.AuthenticateAsync("admin", "new-password", cancel);
+        var old = await service.AuthenticateAsync("admin", "admin", cancel);
 
         // Assert
         Assert.True(initial?.MustChangePassword);
@@ -45,7 +43,7 @@ public sealed class AccountServiceTests : IClassFixture<TestApplicationFactory>
         Assert.Null(old);
     }
 
-    // 表示名とテーマは版が合うときだけ保存する (JSONBの読み書きも確かめる)
+    // 表示名とテーマは版が合うときだけ保存する (JSONの読み書きも確かめる)
     [Fact]
     public async Task ProfileUpdateUsesVersion()
     {
@@ -54,8 +52,7 @@ public sealed class AccountServiceTests : IClassFixture<TestApplicationFactory>
         var accessor = factory.Services.GetRequiredService<AccountAccessor>();
         var passwordProvider = factory.Services.GetRequiredService<IPasswordProvider>();
         var cancel = TestContext.Current.CancellationToken;
-        using var scope = BeginScope();
-        await accessor.InsertAsync("machi", "machi", passwordProvider.Generate("password-1234"), "User", false, TimeProvider.System.GetUtcNow().UtcDateTime);
+        await accessor.InsertAsync("machi", "machi", passwordProvider.Generate("password-1234"), "User", false, TimeProvider.System.GetUtcNow().UtcDateTime, cancel);
         var profile = (await service.FindProfileAsync("machi", cancel))!;
 
         // Act
@@ -71,7 +68,4 @@ public sealed class AccountServiceTests : IClassFixture<TestApplicationFactory>
         Assert.Equal(ThemeModes.Dark, saved.Preferences.Theme);
         Assert.Equal(profile.Version + 1, saved.Version);
     }
-
-    private IDisposable BeginScope() =>
-        factory.Services.GetRequiredService<ApplicationServiceContextProvider>().Begin(static () => new ServiceContext(TimeProvider.System.GetLocalNow(), "test"));
 }

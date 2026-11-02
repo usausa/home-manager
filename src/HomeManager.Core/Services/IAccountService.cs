@@ -2,7 +2,7 @@ namespace HomeManager.Services;
 
 public interface IAccountService
 {
-    ValueTask<AccountEntity?> AuthenticateAsync(string name, string password);
+    ValueTask<AccountEntity?> AuthenticateAsync(string name, string password, CancellationToken cancellationToken = default);
 
     ValueTask<AccountProfile?> FindProfileAsync(string name, CancellationToken cancellationToken = default);
 

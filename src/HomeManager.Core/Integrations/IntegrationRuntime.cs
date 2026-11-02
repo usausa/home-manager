@@ -46,11 +46,11 @@ internal sealed class IntegrationRuntime : IIntegrationContext, IDisposable
                 {
                     await work(cancel);
                 }
-                catch (OperationCanceledException)
+                catch (OperationCanceledException) when (cancel.IsCancellationRequested)
                 {
                     // Stopped
                 }
-                catch (Exception ex) when (ex is not OperationCanceledException)
+                catch (Exception ex) when ((ex is not OperationCanceledException) || !cancel.IsCancellationRequested)
                 {
                     log.ErrorIntegrationBackground(Domain, ex);
                 }

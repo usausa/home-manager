@@ -92,7 +92,7 @@ public sealed class IntegrationManager
             log.InfoIntegrationLoaded(domain);
             bus.Publish(new ComponentLoadedEvent(domain, EventContext.Create(), timeProvider.GetUtcNow()));
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        catch (Exception ex) when ((ex is not OperationCanceledException) || !cancel.IsCancellationRequested)
         {
             runtime.Status = IntegrationStatus.SetupError;
             runtime.Error = ex.Message;
@@ -129,7 +129,7 @@ public sealed class IntegrationManager
                 }
             }
 
-            entityManager.RemovePlatform(runtime.Domain);
+            // 状態は消さない (HAと同じくプロセスが終わるまで残す。消すと画面や履歴に全エンティティの削除が出る)
             runtime.Dispose();
             log.InfoIntegrationUnloaded(runtime.Domain);
         }

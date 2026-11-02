@@ -26,7 +26,6 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
-using Microsoft.FeatureManagement;
 
 using MiniDataProfiler;
 using MiniDataProfiler.Listener.Logging;
@@ -49,7 +48,6 @@ public static class ApplicationExtensions
     private const string HealthEndpointPath = "/health";
     private const string AlivenessEndpointPath = "/alive";
     private const string MigrationPath = "Assets/Data/Migrations";
-    private const string SystemUserId = "system";
 
     //--------------------------------------------------------------------------------
     // System
@@ -76,9 +74,6 @@ public static class ApplicationExtensions
         builder.Services
             .AddWindowsService()
             .AddSystemd();
-
-        // Feature management
-        builder.Services.AddFeatureManagement();
 
         return builder;
     }
@@ -569,12 +564,9 @@ public static class ApplicationExtensions
             return new DelegateDbProvider(() => new SqliteConnection(connectionString));
         });
         builder.Services.AddSingleton<IDialect>(new DelegateDialect(
-            static ex => ex is SqliteException { SqliteErrorCode: 19 } or SqliteException { SqliteExtendedErrorCode: 1555 or 2067 },
+            static ex => ex is SqliteException { SqliteExtendedErrorCode: 1555 or 2067 },
             static x => Regex.Replace(x, @"[%_\\]", @"\$0")));
         builder.Services.AddDataAccessors(typeof(AccountAccessor).Assembly);
-
-        // Cache
-        builder.Services.AddMemoryCache();
 
         // Security
         builder.Services.AddSingleton(new DefaultPasswordProviderOptions());
@@ -695,13 +687,9 @@ public static class ApplicationExtensions
         PrepareDatabaseDirectory(app.Configuration);
         await app.Services.GetRequiredService<DatabaseService>().MigrateAsync(MigrationPath, CancellationToken.None);
 
-        // Seed initial account (startup has no boundary, so the service context is started here)
-        var timeProvider = app.Services.GetRequiredService<TimeProvider>();
-        using (app.Services.GetRequiredService<ApplicationServiceContextProvider>().Begin(() => new ServiceContext(timeProvider.GetLocalNow(), SystemUserId)))
-        {
-            var setting = app.Services.GetRequiredService<AuthSetting>();
-            await app.Services.GetRequiredService<AccountService>().InitializeAsync(setting.InitialAccount, Roles.Administrator);
-        }
+        // Seed initial account
+        var setting = app.Services.GetRequiredService<AuthSetting>();
+        await app.Services.GetRequiredService<AccountService>().InitializeAsync(setting.InitialAccount, Roles.Administrator, CancellationToken.None);
 
         // Load core config and onboarding progress (the default core config is saved on first startup)
         await app.Services.GetRequiredService<ICoreConfigService>().LoadAsync(EventContext.Create(), CancellationToken.None);

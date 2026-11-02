@@ -2,7 +2,7 @@ namespace HomeManager.Domain;
 
 using System.Text.Json.Serialization;
 
-// 全体設定 (HA の core_config)。core.Settingのキーcore.configにJSONで保存する。既定値は初回の起動で保存する値
+// 全体設定 (HA の core_config)。Settingのキーcore.configにJSONで保存する。既定値は初回の起動で保存する値
 public sealed record CoreConfig
 {
     public string Name { get; init; } = "我が家";

@@ -13,17 +13,11 @@ public sealed partial class OnboardingPage
 
     private OnboardingStep step;
 
-    private MudForm? passwordForm;
+    private PasswordChangeForm? passwordForm;
 
     private CoreConfigForm? configForm;
 
     private CoreConfigModel configModel = new();
-
-    private string? currentPassword;
-
-    private string? newPassword;
-
-    private string? confirmPassword;
 
     private bool busy;
 
@@ -122,17 +116,9 @@ public sealed partial class OnboardingPage
     // Event
     //--------------------------------------------------------------------------------
 
-    private string? ValidateConfirm(string? value) => AccountMessages.ValidateConfirm(value, newPassword);
-
     private async Task OnPasswordSubmitAsync()
     {
-        if (passwordForm is null)
-        {
-            return;
-        }
-
-        await passwordForm.ValidateAsync();
-        if (!passwordForm.IsValid || (Session.Profile is null))
+        if ((passwordForm is null) || (Session.Profile is null) || !await passwordForm.ValidateAsync())
         {
             return;
         }
@@ -140,7 +126,7 @@ public sealed partial class OnboardingPage
         busy = true;
         try
         {
-            var status = await AccountService.ChangePasswordAsync(Session.Profile.Name, currentPassword ?? string.Empty, newPassword ?? string.Empty);
+            var status = await AccountService.ChangePasswordAsync(Session.Profile.Name, passwordForm.CurrentPassword ?? string.Empty, passwordForm.NewPassword ?? string.Empty);
             if (status != PasswordChangeStatus.Success)
             {
                 Snackbar.AddError(AccountMessages.GetPasswordError(status));
@@ -148,9 +134,6 @@ public sealed partial class OnboardingPage
             }
 
             await Session.ReloadAsync();
-            currentPassword = null;
-            newPassword = null;
-            confirmPassword = null;
             MoveNext();
         }
         finally
@@ -173,7 +156,7 @@ public sealed partial class OnboardingPage
             if (status != DataWriteStatus.Success)
             {
                 configModel = CoreConfigModel.From(CoreConfig.Config);
-                Snackbar.AddWarning("ほかの画面で全体設定が変わったため、最新の値を読み込みました。確かめてからもう一度保存してください。");
+                Snackbar.AddWarning(CoreConfigForm.ConflictMessage);
                 return;
             }
 

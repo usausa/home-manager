@@ -35,7 +35,7 @@ public static class AuthEndpoints
     {
         var account = String.IsNullOrEmpty(name) || String.IsNullOrEmpty(password)
             ? null
-            : await accountService.AuthenticateAsync(name, password);
+            : await accountService.AuthenticateAsync(name, password, context.RequestAborted);
         if (account is null)
         {
             return TypedResults.LocalRedirect($"~/login?error=1&returnUrl={Uri.EscapeDataString(returnUrl ?? string.Empty)}");

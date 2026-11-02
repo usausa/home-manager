@@ -44,7 +44,7 @@ public sealed class IntegrationWorker : BackgroundService
 
             await Task.Delay(Timeout.InfiniteTimeSpan, timeProvider, stoppingToken);
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
         {
             // Shutdown
         }

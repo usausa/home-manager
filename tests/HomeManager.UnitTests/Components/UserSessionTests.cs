@@ -80,6 +80,25 @@ public sealed class UserSessionTests
         await accountService.Received(2).FindProfileAsync("admin", Arg.Any<CancellationToken>());
     }
 
+    [Fact]
+    public async Task LoadRetriesAfterFailure()
+    {
+        // Arrange
+        var calls = 0;
+        var profile = new AccountProfile(1, "admin", "まち", Roles.Administrator, false, new AccountPreferences(), 1);
+        accountService.FindProfileAsync("admin", Arg.Any<CancellationToken>())
+            .Returns(_ => ++calls == 1 ? throw new InvalidOperationException("Database is locked.") : profile);
+        var session = CreateSession(CreateUser("admin", Roles.Administrator));
+
+        // Act
+        await Assert.ThrowsAsync<InvalidOperationException>(session.LoadAsync);
+        await session.LoadAsync();
+
+        // Assert
+        Assert.Equal("まち", session.DisplayName);
+        Assert.Equal(2, calls);
+    }
+
     private UserSession CreateSession(ClaimsPrincipal user) =>
         new(new FixedAuthenticationStateProvider(user), accountService, onboardingService);
 

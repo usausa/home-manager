@@ -26,6 +26,19 @@ public sealed class EntityManagerTests
     }
 
     [Fact]
+    public void SuggestedObjectIdIsSlugified()
+    {
+        // Arrange
+        var runtime = new TestRuntime();
+
+        // Act
+        var ids = runtime.Entities.AddEntities("demo", [new DemoLight("Living Ceiling", "天井照明", false, false, null)]);
+
+        // Assert
+        Assert.Equal(["light.living_ceiling"], ids);
+    }
+
+    [Fact]
     public void EntityIdGetsSuffixWhenUsedAndFallsBackToPlatform()
     {
         // Arrange

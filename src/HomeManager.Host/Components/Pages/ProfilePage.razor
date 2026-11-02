@@ -39,11 +39,7 @@
     <MudPaper Outlined="true" Class="pa-4 settings-section">
         <MudText Typo="Typo.h6">パスワードの変更</MudText>
         <MudText Typo="Typo.body2" Class="mb-2 mud-text-secondary">@Length.PasswordMin 文字以上で、今のパスワードと違うものにしてください。</MudText>
-        <MudForm @ref="passwordForm" Spacing="2">
-            <MudTextField T="string" @bind-Value="currentPassword" Label="今のパスワード" InputType="InputType.Password" Required="true" RequiredError="今のパスワードを入力してください。" MaxLength="@Length.Password" Variant="Variant.Outlined" Margin="Margin.Dense" />
-            <MudTextField T="string" @bind-Value="newPassword" Label="新しいパスワード" InputType="InputType.Password" Validation="@(new Func<string?, string?>(AccountRules.ValidatePassword))" MaxLength="@Length.Password" Variant="Variant.Outlined" Margin="Margin.Dense" />
-            <MudTextField T="string" @bind-Value="confirmPassword" Label="新しいパスワード（確認）" InputType="InputType.Password" Validation="@(new Func<string?, string?>(ValidateConfirm))" MaxLength="@Length.Password" Variant="Variant.Outlined" Margin="Margin.Dense" />
-        </MudForm>
+        <PasswordChangeForm @ref="passwordForm" />
         <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Key" Disabled="busy" Class="mt-4" OnClick="OnPasswordChangeAsync">変更</MudButton>
     </MudPaper>
 </Condition>

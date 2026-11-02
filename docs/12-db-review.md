@@ -1,7 +1,7 @@
 # 🗄️ 12. DB の見直し（PostgreSQL は必要か）
 
 > 📌 **きっかけ**: P1 の締めの見直し（2026-11-02）で「PostgreSQL が必要なのかも見直す。**SQLite で済む範囲であるのなら、ポータブルな方向に方針を変える**」
-> 🔗 関連: [06 §3](06-dotnet-architecture.md)（DB を選んだ理由）・[09](09-db-design.md)（DB 設計）・[02](02-ha-core-architecture.md)（HA の Recorder）・[04](04-template-survey.md)（テンプレートは SQLite）
+> 🔗 関連: [06 §5・§6-5](06-dotnet-architecture.md)（DB を選んだ理由と保存設計）・[09](09-db-design.md)（DB 設計）・[02](02-ha-core-architecture.md)（HA の Recorder）・[04](04-template-survey.md)（テンプレートは SQLite）
 
 ---
 
@@ -22,7 +22,7 @@
 
 > SQLite は .NET の `Microsoft.Data.Sqlite` 10.0 に入っている **3.53.3**（2026-06）で比べる。Raspberry Pi（linux-arm64）のネイティブライブラリも同梱。
 
-| 要件（どこで使うか） | 🐘 PostgreSQL（今の設計） | 🪶 SQLite 3.53 | 判定 |
+| 要件（どこで使うか） | 🐘 PostgreSQL（元の設計） | 🪶 SQLite 3.53 | 判定 |
 |---|---|---|:-:|
 | 🗂️ 設定・レジストリ・認証の表（core 27 表・小さい） | 普通の表・外部キー・UNIQUE | 同じ（外部キーは `PRAGMA foreign_keys = ON`） | ✅ |
 | 🧾 JSON（設定・属性・自動化の定義・ダッシュボード） | `JSONB` | `TEXT` + JSON 関数（`json_extract`・`->>`）、バイナリの JSONB も 3.45 から | ✅ |
@@ -48,7 +48,7 @@
 | 場面 | 🐘 PostgreSQL | 🪶 SQLite |
 |---|---|---|
 | 🍓 Raspberry Pi に置く | アプリ + PostgreSQL のコンテナ（メモリも食う） | **アプリだけ**（DB はプロセスの中） |
-| 🧑‍💻 開発（Aspire） | PostgreSQL + pgweb のコンテナを起動 | DB のコンテナは無し（Mosquitto は P2 で MQTT の機器を使うときだけ） |
+| 🧑‍💻 開発（Aspire） | PostgreSQL + pgweb のコンテナを起動 | DB のコンテナは無し（Mosquitto だけ起動。使うのは P2 から） |
 | 🧪 結合テスト・E2E | Testcontainers（Docker / Podman が要る。無ければスキップ） | **一時ファイルの DB**（どこでも動く。テンプレートと同じ） |
 | 💾 引っ越し・バックアップ | `pg_dump` / `pg_restore` | `data/` フォルダーをコピー |
 | 🔐 秘密 | DB のパスワードを環境変数で渡す | DB のパスワードは無い（ファイルの権限で守る） |
@@ -68,20 +68,20 @@
 
 ---
 
-## 🛠️ 4. 切り替える場合にやること
+## 🛠️ 4. 切り替えでやったこと（2026-11-02）
 
-| 範囲 | 変えること |
+| 範囲 | やったこと |
 |---|---|
-| 🖥️ Host | `Npgsql` → `Microsoft.Data.Sqlite`。接続を開いたら `journal_mode = WAL`・`foreign_keys = ON`・`busy_timeout`。一意制約の違反の判定（テンプレートの `SqliteException` の判定を使う）。接続文字列は `Data Source=data/homemanager.db` |
-| 🧬 マイグレーション | `0001_core_initial.sql` を SQLite 用に書き直す（まだ本番が無いので書き換えてよい）。スキーマの接頭辞 `core.` を外す。アドバイザリーロックは `BEGIN IMMEDIATE` に置き換える |
-| 🧾 SQL | `CAST(… AS JSONB)` を外す、DB の大きさは `page_count × page_size`・版は `sqlite_version()` |
+| 🖥️ Host | `Npgsql` → `Microsoft.Data.Sqlite`。接続文字列は `Data Source=data/homemanager.db;Foreign Keys=True`（外部キーは接続文字列で有効にする）。起動時に DB ファイルのフォルダーを作る。一意制約の違反の判定はテンプレートの `SqliteException` の判定 |
+| 🧬 マイグレーション | 起動時に `journal_mode = WAL`（DB ファイルに残る）。`0001_core_initial.sql` を SQLite 用（`STRICT`・`json_valid`）に書き直した。スキーマの接頭辞 `core.` を外した。1 プロセスなのでロックは取らない（アドバイザリーロックは削除） |
+| 🧾 SQL | `CAST(… AS JSONB)` を外した。DB の大きさは `page_count × page_size`、版は `sqlite_version()`、場所は `pragma_database_list` |
 | 🧪 テスト | 結合・E2E は Testcontainers をやめて一時ファイル（テンプレートと同じ）。E2E は Playwright だけが要る |
-| 🚀 Aspire | PostgreSQL・pgweb を外す（Mosquitto は残す） |
-| 📦 配置 | `compose.yaml` から PostgreSQL を外す、`homemanager.env` の接続文字列、systemd の作業フォルダーと `data/` の権限 |
-| 📝 ドキュメント | [06](06-dotnet-architecture.md)（DB の選択）・[09](09-db-design.md)（型・ファイルの分け方・保持期間のやり方）・README・[11](11-progress.md) |
-| 🧹 開発用のデータ | Aspire の PostgreSQL のボリュームは使わなくなる（消すかどうかは別に決める）。新しい DB では初回セットアップからやり直し |
+| 🚀 Aspire | PostgreSQL・pgweb を外した（Mosquitto は残す） |
+| 📦 配置 | `compose.yaml` は Mosquitto だけ。`homemanager.env` の接続文字列は `/var/lib/homemanager/homemanager.db`。systemd の `StateDirectory` でフォルダーを作る |
+| 📝 ドキュメント | [06](06-dotnet-architecture.md)・[09](09-db-design.md)・README・00・04・05・07・[11](11-progress.md)（残っていた古い記述は P1 の見直しで直した） |
+| 🧹 開発用のデータ | Aspire の PostgreSQL のボリュームは使わなくなった（P1 の締めで確かめてから消す）。新しい DB では初回セットアップからやり直し |
 
-> 🧭 進め方の案: P1 の締めの中で先に切り替え → テスト（単体・結合・E2E）とブラウザで確かめる → そのあと残りの見直しと整理。
+> ⏱️ `busy_timeout` は設定していない（`Microsoft.Data.Sqlite` は書き込みが重なるとコマンドのタイムアウトまで待ち直す）。P4 で履歴を書き始めたら様子を見る。
 
 ---
 

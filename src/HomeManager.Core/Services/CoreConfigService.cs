@@ -9,9 +9,9 @@ public sealed class CoreConfigService : ICoreConfigService
 {
     private const string Key = "core.config";
 
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
-
     private readonly Lock sync = new();
+
+    private readonly ILogger<CoreConfigService> log;
 
     private readonly SettingAccessor settingAccessor;
 
@@ -22,10 +22,12 @@ public sealed class CoreConfigService : ICoreConfigService
     private Snapshot current = new(new CoreConfig(), TimeZones.Find(TimeZones.Default));
 
     public CoreConfigService(
+        ILogger<CoreConfigService> log,
         SettingAccessor settingAccessor,
         IEventBus bus,
         TimeProvider timeProvider)
     {
+        this.log = log;
         this.settingAccessor = settingAccessor;
         this.bus = bus;
         this.timeProvider = timeProvider;
@@ -41,12 +43,11 @@ public sealed class CoreConfigService : ICoreConfigService
         if (entity is null)
         {
             // 初回は既定値を保存する (同時に起動しても重ならないよう、既にあれば何もしない)
-            await settingAccessor.InsertAsync(Key, JsonSerializer.Serialize(new CoreConfig(), JsonOptions), timeProvider.GetUtcNow().UtcDateTime, cancellationToken);
+            await settingAccessor.InsertAsync(Key, JsonSerializer.Serialize(new CoreConfig(), StoredJson.Options), timeProvider.GetUtcNow().UtcDateTime, cancellationToken);
             entity = await settingAccessor.QueryByKeyAsync(Key, cancellationToken) ?? throw new InvalidOperationException($"Setting is not found. key=[{Key}]");
         }
 
-        var value = JsonSerializer.Deserialize<CoreConfig>(entity.Value, JsonOptions) ?? new CoreConfig();
-        Apply(value with { Version = entity.Version }, context);
+        Apply(Deserialize(entity.Value) with { Version = entity.Version }, context);
     }
 
     public async ValueTask<DataWriteStatus> UpdateAsync(CoreConfig value, EventContext context, CancellationToken cancellationToken = default)
@@ -57,7 +58,7 @@ public sealed class CoreConfigService : ICoreConfigService
             throw new ServiceValidationException(errors[0]);
         }
 
-        var count = await settingAccessor.UpdateAsync(Key, JsonSerializer.Serialize(value, JsonOptions), timeProvider.GetUtcNow().UtcDateTime, value.Version, cancellationToken);
+        var count = await settingAccessor.UpdateAsync(Key, JsonSerializer.Serialize(value, StoredJson.Options), timeProvider.GetUtcNow().UtcDateTime, value.Version, cancellationToken);
         if (count == 0)
         {
             return DataWriteStatus.Conflict;
@@ -100,6 +101,20 @@ public sealed class CoreConfigService : ICoreConfigService
         if (changes.Count > 0)
         {
             bus.Publish(new CoreConfigUpdatedEvent(changes, context, timeProvider.GetUtcNow()));
+        }
+    }
+
+    // 形が違うJSONは既定値として読む (起動を止めない。次に保存すると正しい形で書き直す)
+    private CoreConfig Deserialize(string json)
+    {
+        try
+        {
+            return JsonSerializer.Deserialize<CoreConfig>(json, StoredJson.Options) ?? new CoreConfig();
+        }
+        catch (JsonException ex)
+        {
+            log.WarnSettingInvalid(Key, ex);
+            return new CoreConfig();
         }
     }
 

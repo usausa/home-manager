@@ -37,8 +37,8 @@
 | 📊 統計 | `recorder.StatisticShortTerm` / `StatisticHourly` | DB の `statistics*` | P4 |
 | 🧙 入力中のウィザード（Config Flow） | **メモリ**（保存しない） | メモリ | P2 |
 | 📡 MQTT Discovery の設定 | **ブローカーの retained メッセージ**（保存しない） | 同じ | P2 |
-| 🔑 Data Protection の鍵 | **ファイル**（`/data/keys`）※**バックアップ必須** | — | P2 |
-| 💾 バックアップ | **ファイル**（`/data/backups/*.tar.gz`）+ 管理情報は `core.Backup` | `backups/*.tar` | P5 |
+| 🔑 Data Protection の鍵 | **ファイル**（データフォルダーの中。本番は `/var/lib/homemanager`）※**バックアップ必須** | — | P2 |
+| 💾 バックアップ | **ファイル**（データフォルダーの `backups/*.tar.gz`）+ 管理情報は `core.Backup` | `backups/*.tar` | P5 |
 
 ---
 
@@ -195,7 +195,7 @@ erDiagram
 
 | 列 | 型 | NULL | 説明 |
 |---|---|:-:|---|
-| Key | TEXT | ✗ | **PK**。`core.config` / `core.onboarding` / `recorder` / `ui` |
+| Key | TEXT | ✗ | **PK**。`core.config` / `core.onboarding` / `recorder`（P4）/ `prometheus`（P4）/ `ui` |
 | Value | JSONB | ✗ | 値 |
 | UpdatedAt | TIMESTAMPTZ | ✗ | |
 | Version | INTEGER | ✗ | 楽観ロック |
@@ -253,7 +253,7 @@ erDiagram
 
 | 列 | 型 | NULL | 説明 |
 |---|---|:-:|---|
-| Id | UUID | ✗ | **PK**（`uuidv7()`）。HA の `entry_id` |
+| Id | UUID | ✗ | **PK**（UUIDv7。.NET の `Guid.CreateVersion7()` で作る）。HA の `entry_id` |
 | Domain | TEXT | ✗ | インテグレーション（`mqtt` など） |
 | Title | TEXT | ✗ | 表示名 |
 | Source | TEXT | ✗ | `user` / `zeroconf` / `import` … |
@@ -307,7 +307,7 @@ erDiagram
 
 | 列 | 型 | NULL | 説明 |
 |---|---|:-:|---|
-| Id | UUID | ✗ | **PK**（`uuidv7()`） |
+| Id | UUID | ✗ | **PK**（UUIDv7。.NET で作る） |
 | ConfigEntryId | UUID | ✗ | FK → ConfigEntry（**CASCADE**: 接続設定を消したらデバイスも消す） |
 | Name | TEXT | ○ | インテグレーションが付けた名前 |
 | NameByUser | TEXT | ○ | ユーザーが付けた名前（こちらを優先して表示） |
@@ -334,7 +334,7 @@ erDiagram
 
 | 列 | 型 | NULL | 説明 |
 |---|---|:-:|---|
-| Id | UUID | ✗ | **PK**（`uuidv7()`）。HA のレジストリの内部 ID |
+| Id | UUID | ✗ | **PK**（UUIDv7。.NET で作る）。HA のレジストリの内部 ID |
 | EntityId | TEXT | ✗ | `light.living_ceiling`（**削除されていない行で UNIQUE**） |
 | Domain | TEXT | ✗ | `EntityId` の `.` より前（**生成列**） |
 | Platform | TEXT | ✗ | 提供するインテグレーション（`mqtt` など） |
@@ -455,7 +455,7 @@ erDiagram
 
 ---
 
-## 💾 6. Recorder（`recorder` スキーマ・P4）
+## 💾 6. Recorder（履歴のファイル・P4）
 
 ### 🗺️ 6-1. ER 図
 
@@ -487,7 +487,7 @@ erDiagram
 | LastUpdated | TIMESTAMPTZ | ✗ | 記録した時刻（保持期間の判定に使う） |
 | LastChanged | TIMESTAMPTZ | ○ | NULL なら LastUpdated と同じ（**容量の節約**。HA と同じ工夫） |
 | ContextId | UUID | ✗ | 変化の原因（Context） |
-| ContextUserId | BIGINT | ○ | 操作したユーザー（Account.Id） |
+| ContextUserId | TEXT | ○ | 操作したユーザー（今の `EventContext.UserId` はログイン名。`Account.Id` に引き直すかは P4 で決める） |
 | ContextParentId | UUID | ○ | 親の Context（どのオートメーションの結果か） |
 | Origin | SMALLINT | ✗ | 0 = local / 1 = remote |
 
@@ -497,7 +497,7 @@ erDiagram
 
 **`EventPayload`**（HA: `event_data`）: `Id` BIGINT IDENTITY **PK**・`Hash` BIGINT・`Data` JSONB・索引 `(Hash)`
 
-**`EventLog`**（HA: `events`）: `Id` BIGINT IDENTITY **PK**・`EventTypeId` INTEGER（FK）・`PayloadId` BIGINT（FK・NULL 可）・`TimeFired` TIMESTAMPTZ・`ContextId` UUID・`ContextUserId` BIGINT・`ContextParentId` UUID・`Origin` SMALLINT・索引 `(EventTypeId, TimeFired)` / `(TimeFired)` / `(ContextId)`
+**`EventLog`**（HA: `events`）: `Id` BIGINT IDENTITY **PK**・`EventTypeId` INTEGER（FK）・`PayloadId` BIGINT（FK・NULL 可）・`TimeFired` TIMESTAMPTZ・`ContextId` UUID・`ContextUserId` TEXT・`ContextParentId` UUID・`Origin` SMALLINT・索引 `(EventTypeId, TimeFired)` / `(TimeFired)` / `(ContextId)`
 
 **`StatisticMeta`**（HA: `statistics_meta`）: `Id` BIGINT IDENTITY **PK**・`StatisticId` TEXT **UNIQUE**（`sensor.house_power` / 外部の値は `external:電気料金`）・`Source` TEXT（`recorder`）・`Name` TEXT・`UnitOfMeasurement` TEXT・`HasMean` BOOLEAN・`HasSum` BOOLEAN
 
@@ -655,7 +655,7 @@ flowchart LR
 |---|---|---|
 | 🗂️ `homemanager.db` | ファイルのコピー。動かしたままなら `VACUUM INTO` か `SqliteConnection.BackupDatabase`（小さい） | 毎日 + 設定を大きく変える前 |
 | 📜 履歴のファイル | 任意（消えても困らない。統計だけ残すなら `StatisticMeta` と `StatisticHourly`） | 週 1 など |
-| 🔑 Data Protection の鍵（`/data/keys`） | ファイルのコピー（**無いと `SecretData` を復号できない**） | `core` と必ず一緒に |
+| 🔑 Data Protection の鍵（データフォルダーの中） | ファイルのコピー（**無いと `SecretData` を復号できない**） | `core` と必ず一緒に |
 
 → `IBackupService`（P5）がこれらを 1 つの `tar.gz` にまとめる
 

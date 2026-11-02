@@ -65,7 +65,7 @@ public sealed partial class GeneralSettingsPage
             }
             else
             {
-                Snackbar.AddWarning("ほかの画面で全体設定が変わったため、最新の値を読み込みました。確かめてからもう一度保存してください。");
+                Snackbar.AddWarning(CoreConfigForm.ConflictMessage);
             }
         }
         catch (ServiceValidationException ex)

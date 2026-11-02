@@ -35,11 +35,7 @@ html, body {
 }
 
 .search-field {
-    max-width: 240px;
-}
-
-.text-right {
-    text-align: right;
+    max-width: 360px;
 }
 
 /* App bar */
@@ -93,11 +89,6 @@ html, body {
 
 .info-table td {
     word-break: break-all;
-}
-
-/* Overview */
-.overview-search {
-    max-width: 320px;
 }
 
 /* Entity tile (CARD-01) */
@@ -159,15 +150,6 @@ html, body {
     white-space: pre-wrap;
     word-break: break-all;
     margin: 0;
-}
-
-.tool-filter {
-    max-width: 360px;
-}
-
-/* Table column width */
-.w-120 {
-    width: 120px;
 }
 
 /* Blazor error UI */

@@ -171,7 +171,7 @@ device.Power.Value = (double)((buffer[7] << 16) + (buffer[6] << 8) + buffer[5]) 
 
 | # | 取り込むもの | HomeManager での使い道 | 提案 |
 |:-:|---|---|:-:|
-| G | 📤 **Prometheus への出力** | HomeManager が**エンティティの状態を `/metrics` で出す**（HA の `prometheus` インテグレーションと同じ）。Exporter の軽量な出力の実装（`IBufferWriter<byte>`）を流用 | ⭐⭐⭐ |
+| G | 📤 **Prometheus への出力** | HomeManager が**エンティティの状態を `/api/v1/prometheus` で出す**（HA の `prometheus` インテグレーションと同じ。アプリ自身のメトリクスの `/metrics` とは別）。Exporter の軽量な出力の実装（`IBufferWriter<byte>`）を流用 | ⭐⭐⭐ |
 | H | 🔁 **既存の Grafana との互換** | 出力に **Exporter と同じ名前・ラベル**（`sensor_temperature{model,address,name}`）を選べるようにする → **今の Grafana のダッシュボードをそのまま使い続けられる** | ⭐⭐ |
 | I | 📊 Grafana のダッシュボード | 部屋（電力・温度・電波・Ping）・センサー 9 項目・SMART の構成を、HomeManager のダッシュボードのカード構成の手本にする | ⭐⭐ |
 | J | ⚡ 電力量（kWh）の計算 | ワットチェッカーの W を時間で積分して kWh にする**ヘルパー**（HA の `integration` ヘルパー）→ エネルギーダッシュボードの材料 | ⭐⭐⭐ |
@@ -184,7 +184,7 @@ device.Power.Value = (double)((buffer[7] << 16) + (buffer[6] << 8) + buffer[5]) 
 |---|---|---|---|
 | A. 並行稼働だけ | Exporter はそのまま。HomeManager は Exporter の `/metrics` を読む（5-1 の 8） | すぐ使える | push でなく遅い（定期取得）。BLE を Exporter が握るので HomeManager で BLE を使いにくい。機器の登録や操作ができない |
 | B. 全部 HomeManager へ | 家の機器も PC の監視も HomeManager に移す | 1 つにまとまる | Windows 専用の監視（LibreHardwareMonitor など）まで抱え込む。各 PC で HomeManager は動かせない |
-| **C. 段階的に役割分担** ✅ 決定 | **家の機器（SwitchBot・ワットチェッカー・オムロン・Ping・Raspberry Pi）は HomeManager のインテグレーションに移す**。**PC の監視は各 PC の Exporter に残し**、必要なものだけ HomeManager が読む。HomeManager は `/metrics` を出し、Grafana は HomeManager を読む | 家の機器は push で即時・自動化に使える。PC 監視は今の資産のまま。Grafana も互換で続く | 移行の間、BLE を二重にスキャンしないよう、移したものから Exporter の `Enable` を外す |
+| **C. 段階的に役割分担** ✅ 決定 | **家の機器（SwitchBot・ワットチェッカー・オムロン・Ping・Raspberry Pi）は HomeManager のインテグレーションに移す**。**PC の監視は各 PC の Exporter に残し**、必要なものだけ HomeManager が読む。HomeManager は `/api/v1/prometheus` を出し、Grafana は HomeManager を読む | 家の機器は push で即時・自動化に使える。PC 監視は今の資産のまま。Grafana も互換で続く | 移行の間、BLE を二重にスキャンしないよう、移したものから Exporter の `Enable` を外す |
 
 ```mermaid
 flowchart LR
@@ -201,7 +201,7 @@ flowchart LR
     end
     Home -->|"BLE・Wi-Fi・シリアル"| HM
     EX -->|"/metrics（必要なものだけ）"| HM
-    HM -->|"/metrics（互換の名前も可）"| PROM["🗄️ Prometheus"]
+    HM -->|"/api/v1/prometheus（互換の名前も可）"| PROM["🗄️ Prometheus"]
     EX -->|"/metrics"| PROM
     PROM --> GF["📈 Grafana"]
 ```

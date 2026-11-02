@@ -13,7 +13,7 @@
 | 🖥️ | **見る・操作する** | 部屋ごとに自動で作るダッシュボード（開いている全員の画面が即座に変わる）、機器の詳細と操作、自分好みのダッシュボード |
 | 🤖 | **自動で動かす** | 「CO2 が高ければ換気を通知」「洗濯機の電力が下がったら終了を通知」「日没後の人感で照明」、スクリプト・シーン・ヘルパー |
 | 📈 | **記録する** | 履歴・ログブック・長期統計・家電ごとの電力量、Prometheus / Grafana への出力 |
-| 🔌 | **外とつなぐ** | REST・リアルタイム API、長期アクセストークン、Webhook |
+| 🔌 | **外とつなぐ** | REST・リアルタイム API、長期アクセストークン、Webhook、（AI 連携） |
 
 👉 機能の一覧と採用の決定は [docs/00-system-features.md](docs/00-system-features.md)、調査と設計は [docs/README.md](docs/README.md)。
 
@@ -24,7 +24,7 @@
 | Phase | 内容 | 状態 |
 |:-:|---|:-:|
 | 🏗️ P0 | `template-blazor-server` から派生・見本の機能を削除・番号付き SQL のマイグレーション・Aspire に Mosquitto・配置用ファイル（2026-10-31〜11-01。DB は P0 で PostgreSQL にしたが、2026-11-02 の見直しで **SQLite** に変更） | ✅ |
-| 🌱 P1 | コアの 3 本柱（EventBus・StateMachine・ServiceRegistry）・エンティティ（7 ドメイン）・インテグレーション基盤・仮想デバイス・概要ダッシュボード・エンティティ詳細・開発者ツール。**ブラウザ 2 枚で「片方の操作がもう片方に即座に反映」を確認済み（2026-11-01）**。2026-11-02 に初回セットアップ・プロフィール・設定（全体設定・システム情報）を追加して機能がそろった（CARD-02 は P4 へ）。いまは見直しと整理（DB は SQLite に変更済み） | ✅ |
+| 🌱 P1 | コアの 3 本柱（EventBus・StateMachine・ServiceRegistry）・エンティティ（7 ドメイン）・インテグレーション基盤・仮想デバイス・概要ダッシュボード・エンティティ詳細・開発者ツール。**ブラウザ 2 枚で「片方の操作がもう片方に即座に反映」を確認済み（2026-11-01）**。2026-11-02 に初回セットアップ・プロフィール・設定（全体設定・システム情報）を追加して機能がそろった（CARD-02 は P4 へ）。DB を SQLite に変え、見直しと整理も済んだ（2026-11-02）。次は P2 | ✅ |
 
 👉 細かい進み具合は [docs/11-progress.md](docs/11-progress.md)（チェックリスト。作業しながら更新する）。
 
@@ -124,9 +124,10 @@ dotnet run --project tests/HomeManager.E2ETests
 dotnet publish src/HomeManager.Host -c Release -r linux-arm64 --self-contained -o publish/linux-arm64
 ```
 
-1. 🐧 アプリ: 発行物を `/opt/homemanager` に置き、`deploy/homemanager.service` を `/etc/systemd/system/` にコピーして `systemctl enable --now homemanager`（DB のファイルは `/var/lib/homemanager/homemanager.db`。フォルダーは systemd が作る）
-2. 🔐 秘密: `deploy/homemanager.env.example` を `/etc/homemanager/homemanager.env` にコピーし、初期パスワードを書き換える
-3. 🐳 MQTT の機器をつなぐときだけ: `deploy/` で `docker compose up -d`（Mosquitto）
-4. 💾 バックアップ: `/var/lib/homemanager` をコピーする（動かしたままなら SQLite の `VACUUM INTO` で書き出す）
+1. 👤 ユーザー: `sudo useradd --system --home-dir /var/lib/homemanager --shell /usr/sbin/nologin homemanager`（ホームをデータフォルダーにすると、ASP.NET の鍵（Data Protection）もそこに入る）
+2. 🔐 秘密: `deploy/homemanager.env.example` を `/etc/homemanager/homemanager.env` にコピーし、初期パスワードを書き換える（**サービスを動かす前に置く**。無いと既定の `data/homemanager.db` と admin / admin で起動してしまう）
+3. 🐧 アプリ: 発行物を `/opt/homemanager` に置き、`deploy/homemanager.service` を `/etc/systemd/system/` にコピーして `systemctl enable --now homemanager`（DB のファイルは `/var/lib/homemanager/homemanager.db`。フォルダーは systemd が作る）
+4. 🐳 MQTT の機器をつなぐときだけ: `deploy/` で `docker compose up -d`（Mosquitto）
+5. 💾 バックアップ: `/var/lib/homemanager` をコピーする（DB と鍵が入っている。動かしたままなら SQLite の `VACUUM INTO` で書き出す）
 
 > ⚠️ `deploy/` のファイルは Linux で使うので改行は LF（`.gitattributes` で指定）。

@@ -93,7 +93,7 @@ flowchart TB
 | ID | 画面名 | URL | コンポーネント | Phase | 権限 | ⚡ | 概要 |
 |---|---|---|---|:-:|:-:|:-:|---|
 | SCR-001 | 🔑 ログイン | `/login` | `Login`（テンプレート） | P1 | 誰でも | | 静的 SSR のフォームから `POST /auth/login`（Cookie） |
-| SCR-002 | 🚀 初回セットアップ | `/onboarding` | `OnboardingPage` | P1 | 🔒 | | ① 初期パスワードの変更 ② 家の名前・位置・タイムゾーン・単位 ③ 完了。終わるまで他の画面に進めない |
+| SCR-002 | 🚀 初回セットアップ | `/onboarding` | `OnboardingPage` | P1 | 全員 | | ① 初期パスワードの変更 ② 家の名前・位置・タイムゾーン・単位（管理者だけ）③ 完了。終わるまで他の画面に進めない |
 | SCR-003 | 👤 プロフィール | `/profile` | `ProfilePage` | P1 | 全員 | | 表示名・パスワード・テーマ（ライト／ダーク／自動）、P4: 既定のダッシュボード、P5: **長期アクセストークン**の発行・失効 |
 | SCR-091 | ⚠️ エラー | `/error` | `Error`（テンプレート） | P1 | 誰でも | | 想定外のエラー |
 | SCR-092 | 🔍 見つからない | `/not-found` | `NotFound`（テンプレート） | P1 | 誰でも | | 404 |
@@ -150,7 +150,7 @@ flowchart TB
 | **👥 ユーザー** | | | | | | |
 | SCR-351 | 👥 ユーザー | `/config/users` | `UserListPage` | P5 | | 追加・ロール・有効／無効・パスワードの再設定 |
 | **🖥️ システム** | | | | | | |
-| SCR-361 | 🌍 全体設定 | `/config/general` | `GeneralSettingsPage` | P1 | | 家の名前・位置（緯度経度）・タイムゾーン・単位系・通貨、P4: 履歴の保持日数 |
+| SCR-361 | 🌍 全体設定 | `/config/general` | `GeneralSettingsPage` | P1 | | 家の名前・位置（緯度経度・標高）・タイムゾーン・単位系・通貨・国、P4: 履歴の保持日数 |
 | SCR-362 | ℹ️ システム情報 | `/config/info` | `SystemInfoPage` | P1 | ⚡ | バージョン・稼働時間・DB の大きさ・各インテグレーションの状態・接続中の回線 |
 | SCR-363 | 📜 ログ | `/config/logs` | `LogViewerPage` | P5 | ⚡ | 直近のエラー・警告（重要度で絞り込み） |
 | SCR-364 | 💾 バックアップ | `/config/backups` | `BackupListPage` | P5 | | 作成・ダウンロード・削除・復元 |
@@ -364,7 +364,7 @@ flowchart TB
 
 | 画面 | 主に使うサービス |
 |---|---|
-| SCR-002 初回セットアップ / SCR-361 全体設定 | `IAccountService` / `ICoreConfigService` |
+| SCR-002 初回セットアップ / SCR-361 全体設定 | `IAccountService` / `ICoreConfigService` / `IOnboardingService` |
 | SCR-101 概要 / SCR-102 ダッシュボード | `IStateMachine` / `IServiceRegistry` / `IAreaRegistry` / `IEntityRegistry` / `IDashboardService` |
 | SCR-103 履歴 / SCR-104 ログブック / SCR-105 エネルギー | `IHistoryService` / `ILogbookService` / `IStatisticsService` |
 | SCR-201〜205 開発者ツール | `IStateMachine` / `IServiceRegistry` / `IEventBus` / `ITemplateRenderer` / `IStatisticsService` |

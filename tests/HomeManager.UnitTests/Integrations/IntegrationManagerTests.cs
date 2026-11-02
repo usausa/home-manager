@@ -57,8 +57,9 @@ public sealed class IntegrationManagerTests
         await manager.StopAsync(TestContext.Current.CancellationToken);
     }
 
+    // 停止しても状態は残す (HA と同じ。消すと画面や履歴に全エンティティの削除が出る)
     [Fact]
-    public async Task StopRemovesEntities()
+    public async Task StopKeepsStates()
     {
         // Arrange
         var runtime = new TestRuntime();
@@ -69,13 +70,38 @@ public sealed class IntegrationManagerTests
         await manager.StopAsync(TestContext.Current.CancellationToken);
 
         // Assert
-        Assert.Equal(0, runtime.Entities.Count);
-        Assert.Equal(0, runtime.States.Count);
+        Assert.Equal(14, runtime.States.Count);
         Assert.Empty(manager.ListIntegrations());
+    }
+
+    // 止めるよう求めていないキャンセル (インテグレーション自身のタイムアウトなど) はセットアップの失敗として扱い、ほかは読み込む
+    [Fact]
+    public async Task CanceledSetupIsSetupError()
+    {
+        // Arrange
+        var runtime = new TestRuntime();
+        var manager = CreateManager(runtime, new TimeoutIntegration(), new DemoIntegration(NullLogger<DemoIntegration>.Instance, runtime.Time));
+
+        // Act
+        await manager.StartAsync(TestContext.Current.CancellationToken);
+
+        // Assert
+        var integrations = manager.ListIntegrations();
+        Assert.Equal(IntegrationStatus.SetupError, Assert.Single(integrations, static x => x.Domain == "timeout").Status);
+        Assert.Equal(IntegrationStatus.Loaded, Assert.Single(integrations, static x => x.Domain == DemoIntegration.Domain).Status);
+
+        await manager.StopAsync(TestContext.Current.CancellationToken);
     }
 
     private static IntegrationManager CreateManager(TestRuntime runtime, params IIntegration[] integrations) =>
         new(NullLogger<IntegrationManager>.Instance, integrations, runtime.Entities, runtime.Services, runtime.Bus, runtime.Time);
+
+    [Integration("timeout", Name = "Timeout")]
+    private sealed class TimeoutIntegration : IIntegration
+    {
+        public ValueTask SetupAsync(IIntegrationContext context, CancellationToken cancel) =>
+            throw new OperationCanceledException("Connection timed out.");
+    }
 
     [Integration("failing", Name = "Failing")]
     private sealed class FailingIntegration : IIntegration

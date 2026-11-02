@@ -7,13 +7,16 @@ using MudBlazor;
 // 全体設定の入力欄 (初回セットアップと全体設定の画面で使う)。保存は使う側が行う
 public sealed partial class CoreConfigForm
 {
+    // ほかの画面が先に保存していたときの文言 (初回セットアップと全体設定の画面で使う)
+    public const string ConflictMessage = "ほかの画面で全体設定が変わったため、最新の値を読み込みました。確かめてからもう一度保存してください。";
+
     private const int MaxTimeZoneItems = 30;
 
     private MudForm? form;
 
     [Parameter]
     [EditorRequired]
-    public CoreConfigModel Model { get; set; } = default!;
+    public required CoreConfigModel Model { get; set; }
 
     // すべての入力欄を確かめる (正しければtrue)
     public async Task<bool> ValidateAsync()

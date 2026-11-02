@@ -8,39 +8,36 @@ using HomeManager.Models.Entity;
 
 public sealed class AccountService : IAccountService
 {
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
-
     private readonly AccountAccessor accountAccessor;
 
     private readonly IPasswordProvider passwordProvider;
 
-    private readonly ServiceContextProvider contextProvider;
+    private readonly TimeProvider timeProvider;
 
     public AccountService(
         AccountAccessor accountAccessor,
         IPasswordProvider passwordProvider,
-        ServiceContextProvider contextProvider)
+        TimeProvider timeProvider)
     {
         this.accountAccessor = accountAccessor;
         this.passwordProvider = passwordProvider;
-        this.contextProvider = contextProvider;
+        this.timeProvider = timeProvider;
     }
 
     // Seed initial account
-    public async ValueTask InitializeAsync(InitialAccountOption option, string role)
+    public async ValueTask InitializeAsync(InitialAccountOption option, string role, CancellationToken cancellationToken = default)
     {
-        var count = await accountAccessor.CountAsync();
+        var count = await accountAccessor.CountAsync(cancellationToken);
         if (count == 0)
         {
-            var context = contextProvider.Current;
             // 初期ユーザーは初回セットアップでパスワードの変更を必須にする。時刻はUTCで書く
-            await accountAccessor.InsertAsync(option.Id, option.Id, passwordProvider.Generate(option.Password), role, true, context.Now.UtcDateTime);
+            await accountAccessor.InsertAsync(option.Id, option.Id, passwordProvider.Generate(option.Password), role, true, timeProvider.GetUtcNow().UtcDateTime, cancellationToken);
         }
     }
 
-    public async ValueTask<AccountEntity?> AuthenticateAsync(string name, string password)
+    public async ValueTask<AccountEntity?> AuthenticateAsync(string name, string password, CancellationToken cancellationToken = default)
     {
-        var account = await accountAccessor.QueryByNameAsync(name);
+        var account = await accountAccessor.QueryByNameAsync(name, cancellationToken);
         if ((account is null) || !account.IsEnabled)
         {
             return null;
@@ -51,7 +48,7 @@ public sealed class AccountService : IAccountService
 
     public async ValueTask<AccountProfile?> FindProfileAsync(string name, CancellationToken cancellationToken = default)
     {
-        var account = await accountAccessor.QueryByNameAsync(name);
+        var account = await accountAccessor.QueryByNameAsync(name, cancellationToken);
         return account is null
             ? null
             : new AccountProfile(account.Id, account.Name, account.DisplayName, account.Role, account.MustChangePassword, ParsePreferences(account.Preferences), account.Version);
@@ -65,8 +62,8 @@ public sealed class AccountService : IAccountService
             throw new ServiceValidationException(error);
         }
 
-        var preferences = JsonSerializer.Serialize(NormalizePreferences(value.Preferences), JsonOptions);
-        var count = await accountAccessor.UpdateProfileAsync(value.Id, value.DisplayName.Trim(), preferences, contextProvider.Current.Now.UtcDateTime, value.Version, cancellationToken);
+        var preferences = JsonSerializer.Serialize(NormalizePreferences(value.Preferences), StoredJson.Options);
+        var count = await accountAccessor.UpdateProfileAsync(value.Id, value.DisplayName.Trim(), preferences, timeProvider.GetUtcNow().UtcDateTime, value.Version, cancellationToken);
         return count > 0 ? DataWriteStatus.Success : DataWriteStatus.Conflict;
     }
 
@@ -77,7 +74,7 @@ public sealed class AccountService : IAccountService
             return PasswordChangeStatus.InvalidPassword;
         }
 
-        var account = await accountAccessor.QueryByNameAsync(name);
+        var account = await accountAccessor.QueryByNameAsync(name, cancellationToken);
         if ((account is null) || !account.IsEnabled)
         {
             return PasswordChangeStatus.NotFound;
@@ -94,7 +91,7 @@ public sealed class AccountService : IAccountService
             return PasswordChangeStatus.InvalidPassword;
         }
 
-        await accountAccessor.UpdatePasswordAsync(account.Id, passwordProvider.Generate(newPassword), contextProvider.Current.Now.UtcDateTime, cancellationToken);
+        await accountAccessor.UpdatePasswordAsync(account.Id, passwordProvider.Generate(newPassword), timeProvider.GetUtcNow().UtcDateTime, cancellationToken);
         return PasswordChangeStatus.Success;
     }
 
@@ -108,7 +105,7 @@ public sealed class AccountService : IAccountService
 
         try
         {
-            return NormalizePreferences(JsonSerializer.Deserialize<AccountPreferences>(json, JsonOptions) ?? new AccountPreferences());
+            return NormalizePreferences(JsonSerializer.Deserialize<AccountPreferences>(json, StoredJson.Options) ?? new AccountPreferences());
         }
         catch (JsonException)
         {

@@ -115,17 +115,17 @@ flowchart TB
 |---|---|---|---|
 | 🧵 実行モデル | asyncio の単一イベントループ | `async`/`await` + スレッドプール。順序が要る所は短いロック + `Channel<T>` | [§6-1](#-6-1-並行性のモデル) |
 | 📣 イベントバス | `EventBus` | 自作の `IEventBus`（イベントは `record`）、購読者ごとの `Channel<T>` | テンプレートの `NotificationBus` / `TelemetryBus` を発展させる |
-| 🗃️ ステートマシン | `StateMachine` + `State` | `ConcurrentDictionary<string, EntityState>` + イミュータブルな `record` | 書き込み時に `StateChanged` を発行 |
-| 🛎️ サービス | `ServiceRegistry` + probatio | `IServiceRegistry` + 型付きのリクエスト `record` + `System.Text.Json` + FluentValidation | FluentValidation はテンプレート標準 |
+| 🗃️ ステートマシン | `StateMachine` + `State` | `Dictionary<string, EntityState>` + 短いロック + イミュータブルな `record` | 書き込み時に `StateChangedEvent` を発行 |
+| 🛎️ サービス | `ServiceRegistry` + probatio | `IServiceRegistry` + `JsonObject`（`ServiceCall` で読む）+ `ServiceValidationException` | P1 の実装（§6 の「P1 で実装した形」）。FluentValidation は使わないので外した |
 | 📄 manifest / 読み込み | `manifest.json` + `loader.py` | `[Integration("mqtt")]` 属性 + `IIntegration` + DI 登録 | 生成器で登録コードを生成（library-with-generator の手法） |
 | 🧱 規約ベースの拡張 | `diagnostics.py` などのファイル名 | `IDiagnosticsProvider` などのインターフェース + `IEnumerable<T>` | worker / command-server の DI 多重登録と同じ発想 |
 | 💡 エンティティ | `Entity` + `_attr_*` | 抽象クラス `Entity` → `LightEntity` など | `EntityDescription` は `record` |
 | 🔄 コーディネーター | `DataUpdateCoordinator` | `PeriodicTimer` + `Microsoft.Extensions.Http.Resilience` | テンプレートは Resilience 不採用だが、**機器との通信には採用** |
 | 🧙 Config Flow | `data_entry_flow` | ステップ式ウィザードの状態機械 + フォーム定義 → `DynamicComponent` で描画 | ログイン画面にも流用できる |
 | 💾 `.storage` の JSON | `helpers/storage.Store` | SQLite のテーブル（設定値は JSON の文字列） | |
-| 🗄️ Recorder | 専用スレッド + キュー + SQLAlchemy | `Workers/RecorderWorker` + `Channel<StateChanged>` + まとめて INSERT（Npgsql の COPY も可） | maui-server の時系列保存の型を流用 |
-| 📊 統計 | 5 分 / 1 時間の集計 | `Workers/StatisticsWorker` + 集計 SQL（TimescaleDB なら連続集計） | |
-| 🧹 削除（purge） | `purge_keep_days` | **パーティションごと DROP**（速い）、または `TelemetryRetentionWorker` 型 | |
+| 🗄️ Recorder | 専用スレッド + キュー + SQLAlchemy | `Workers/RecorderWorker` + `Channel<StateChangedEvent>` + 5 秒ごとに 1 トランザクションでまとめて INSERT | maui-server の時系列保存の型を流用 |
+| 📊 統計 | 5 分 / 1 時間の集計 | `Workers/StatisticsWorker` + 集計 SQL | |
+| 🧹 削除（purge） | `purge_keep_days` | **少しずつ DELETE + 時々 VACUUM**（HA と同じ。日ごとのファイルに分ける案も P4 で比べる）、`TelemetryRetentionWorker` 型 | |
 | 🧮 テンプレート | Jinja2（サンドボックス） | Scriban または Fluid + 独自関数 `states()` など | 参照したエンティティを記録して再評価 |
 | 📝 YAML | `automations.yaml` | YamlDotNet で入出力（保存の正は DB） | |
 | ⏰ 時間 | `async_track_*` / astral / cronsim | **`TimeProvider`** + Cronos（cron 式）+ CoordinateSharp（日の出・日の入り） | 定期ジョブは Mofucat.JobScheduler（worker テンプレート）も可 |
@@ -149,7 +149,7 @@ flowchart TB
 | 用途 | パッケージ | 版 |
 |---|---|---|
 | 🎨 UI | MudBlazor / Usa.Smart.Blazor | 9.11.0 / 2.5.0 |
-| ✅ 検証 | FluentValidation | 12.2.0 |
+| ✅ 検証 | ~~FluentValidation~~（使わないので 2026-11-02 に外した。サービスの入力は `ServiceCall` で確かめる） | — |
 | 🗄️ データアクセス | Usa.Smart.Data.Accessor（+ DI 拡張） | 3.0.0-beta16 |
 | 💉 DI の自動登録 | BunnyTail.ServiceRegistration | 1.22.0 |
 | 📝 ログ | Serilog.AspNetCore | 10.0.0 |
@@ -163,7 +163,6 @@ flowchart TB
 |---|---|---|:-:|
 | 🪶 SQLite | `Microsoft.Data.Sqlite`（SQLite 3.53.3 を同梱） | 10.0.13 | P1（2026-11-02 に Npgsql から変更） |
 | 🚀 Aspire（ブローカー） | `CommunityToolkit.Aspire.Hosting.Mosquitto` | 13.6.1 | P0 |
-| 🧪 テストの DB | `Testcontainers.PostgreSql` | 4.16.0 | P0 |
 | ⏰ テストの時間 | `Microsoft.Extensions.TimeProvider.Testing` | 10.11.0 | P1 |
 | 📡 MQTT | `MQTTnet` | 5.2.0 | P2 |
 | 🔁 回復性 | `Microsoft.Extensions.Http.Resilience` | 10.11.0 | P2 |
@@ -193,12 +192,12 @@ incubator-home/
 ├── src/
 │   ├── HomeManager.AppHost/             🚀 Aspire: Host + Mosquitto（DB は SQLite で Host の中）
 │   ├── HomeManager.Core/                🧠 HA のコアに当たる部分（ASP.NET 非依存）
-│   │   ├── Domain/          EntityState / EventContext / StateChanged / 各レジストリの項目（BCL だけ）
+│   │   ├── Domain/          EntityState / EventContext / StateChangedEvent / 各レジストリの項目（BCL だけ）
 │   │   ├── Platforms/       🆕 Entity 基底・LightEntity / SensorEntity / SwitchEntity …（HA の components/light 等）
 │   │   ├── Integrations/    🆕 IIntegration・ConfigFlow・拡張ポイントのインターフェース・IntegrationManager
 │   │   ├── Services/        StateMachine / EventBus / ServiceRegistry / 各 Registry / Automation / Recorder のロジック
 │   │   ├── Accessors/       Smart.Data.Accessor + Sql/*.sql（レジストリ・設定・履歴・統計）
-│   │   ├── Models/          画面・API 向けのビュー
+│   │   ├── Models/          DB の行（Models/Entity）
 │   │   └── Infrastructure/  持ち出せる部品
 │   ├── HomeManager.Integration.Demo/    🧪 仮想デバイス（P1）
 │   ├── HomeManager.Integration.Bluetooth/       🔵 共通の BLE 基盤（BlueZ / WinRT。Exporter から移植・P2）
@@ -208,9 +207,9 @@ incubator-home/
 │   ├── HomeManager.Integration.Ping/            📶 Ping（P2）
 │   ├── HomeManager.Integration.Mqtt/    📡 MQTTnet + MQTT Discovery（P2・機器があれば）
 │   └── HomeManager.Host/                🖥️ Blazor Server + API + Hub
-│       ├── Application/     ApplicationExtensions / Authentication / Circuits / Context / HealthChecks / Telemetry
+│       ├── Application/     ApplicationExtensions / Circuits / Context / HealthChecks / Telemetry（Authentication は P5）
 │       ├── Components/      Pages（Dashboard / Entities / Devices / Areas / Integrations / Automations / History / DevTools）/ Cards / Forms
-│       ├── Endpoints/       /api/states・/api/services・/api/events・/api/history（P5）
+│       ├── Endpoints/       /api/v1/states・/api/v1/services・/api/v1/events・/api/v1/history（P5）
 │       ├── Hubs/            HomeHub（P5）
 │       ├── Workers/         IntegrationWorker / RecorderWorker / StatisticsWorker / RetentionWorker
 │       ├── Settings/  Infrastructure/  Assets/Data/Migrations/*.sql（番号付きの SQL。[09](09-db-design.md) §7）
@@ -254,10 +253,10 @@ flowchart LR
     BUS -->|"TryWrite"| C3["📮 UI 回線ごと<br/>上限あり・古いものを捨てる"]
     C1 --> R["💾 RecorderWorker"]
     C2 --> A["🤖 トリガー評価"]
-    C3 --> U["🖥️ Blazor 回線<br/>RefreshTimer で間引いて再描画"]
+    C3 --> U["🖥️ Blazor 回線<br/>RefreshThrottle で間引いて再描画"]
 ```
 
-- 🔒 `StateMachine.Set` は「辞書の更新 → 全購読者の Channel に `TryWrite`」を短いロックの中で行う → **全購読者が同じ順序**でイベントを受け取る
+- 🔒 `StateMachine.SetState` は「辞書の更新 → 全購読者の Channel に `TryWrite`」を短いロックの中で行う → **全購読者が同じ順序**でイベントを受け取る
 - 📮 購読者ごとに専用の `Channel<T>` と処理タスク → **遅い購読者が他を巻き込まない**（grpc-server の `BroadcastSubscription` と同じ考え方）
 - 🚰 UI と外部クライアントは上限付き（あふれたら古いものを捨てる）、Recorder と Automation は取りこぼし不可（上限なし + 滞留を監視）
 - 🧪 時間は必ず **`TimeProvider`** 経由 → テストで `FakeTimeProvider` を使い「5 分後に OFF」を一瞬で検証できる
@@ -406,6 +405,8 @@ public interface ITriggerPlatform
 | 🧵 Context の引き継ぎ | — | サービスで操作したエンティティに 5 秒だけ操作者の Context を覚えさせる（HA の `async_set_context`） | 「誰が変えたか」を状態に残す（詳細ダイアログの「操作」） |
 | 📣 購読 | `Subscribe(handler, filter, options)` | 同じ。購読者ごとに `Channel` と処理タスク、`Capacity` を付けると溢れたら古いものを捨てる | 画面は合図だけ受け取れればよい |
 | 🗃️ 属性の比較 | — | 中身で比べる（`AttributeComparer`。配列・入れ子の辞書・JSON も） | 同じ値なら `state_reported`、違えば `state_changed`（HA と同じ） |
+| 🏷️ イベントと API の名前 | `StateChanged`・`Publish<TEvent>`・`Register<TRequest>`・`CallAsync(…, blocking)`・`StateMachine.Set` | `StateChangedEvent`（イベントは `XxxEvent`）・`Publish(IHomeEvent)`・`Register(ServiceDefinition, handler)`・`CallAsync`（blocking 無し。待つかは呼ぶ側）・`SetState` | VB の予約語（CA1716）と名前の一貫性。応答を返すサービスは `Register` のハンドラーが値を返す |
+| 🧾 サービスの入力 | 型付き record + FluentValidation | `JsonObject` のまま受け、`ServiceCall.GetNumber` などで読む。誤りは `ServiceValidationException`（画面にそのまま出す） | HA と同じく入力は JSON。FluentValidation は使っていない |
 | 🧩 DB を使うサービス（2026-11-02） | — | インターフェース（`ICoreConfigService` など）+ 実装。実装は `AddCoreServices`（名前が `Service` で終わるクラスを登録）、インターフェースは `AddCoreServiceInterfaces` で同じ実装を引く | 画面のテスト（bUnit）で代わりのものに差し替える |
 | 👤 ログイン中のユーザー（2026-11-02） | — | Host の `UserSession`（回線ごと）。表示名・テーマ・初回セットアップが必要かを持ち、保存したら `Changed` で知らせる | 上部バーとテーマを保存した直後に変える |
 
@@ -469,7 +470,6 @@ flowchart TB
             MQ["📡 Mosquitto"]
             Z2M["🐝 Zigbee2MQTT"]
         end
-        APP --> PG
         APP <--> MQ
         Z2M <--> MQ
     end
@@ -493,11 +493,11 @@ flowchart TB
 | 📶 Blazor Server の回線切れ | スマホのスリープ・Wi-Fi の切り替え・無人のタブレット | `reconnect.js` を「失敗したら再読み込み」に、壁掛けは定期リロード |
 | 🧠 Raspberry Pi の資源 | .NET + Mosquitto を 1 台で（DB はアプリの中） | RPi 5（4GB 以上）か ミニ PC。DB のサーバーが無い分だけ軽い |
 | 🗄️ 履歴の肥大化 | センサーが多いと `states` が急増 | 保持期間（少しずつ DELETE か日ごとのファイル）、属性の重複排除、記録対象のフィルタ（HA の include / exclude） |
-| 🌊 イベントの洪水 | MQTT センサーが大量に値を送る | 上限付き Channel、`RefreshTimer` で描画を間引く、Recorder はまとめて書く |
+| 🌊 イベントの洪水 | MQTT センサーが大量に値を送る | 上限付き Channel、`RefreshThrottle` で描画を間引く、Recorder はまとめて書く |
 | 💥 インテグレーションの例外 | 1 つの例外でホストが止まる（`BackgroundService` の既定） | インテグレーションごとに捕まえて**再試行（HA の setup_retry）**。状態を画面に出す |
 | 🕐 時刻 | 日の出の計算・cron・再起動をまたぐタイマー | 内部は UTC、トリガーだけローカル時刻。`TimeProvider` に統一 |
 | 🔐 セキュリティ | LAN 内でも IoT 機器を操作できる | ログイン必須、API はトークン、外部公開はトンネルだけ、API キーの比較は FixedTimeEquals。テンプレートの初期ユーザー（admin/admin）は**初回起動時に変更を必須**にする（HA のオンボーディング相当） |
-| 🧬 スキーマの変更 | テンプレートは `CREATE TABLE IF NOT EXISTS` だけ | 版番号 + 移行 SQL の仕組みを P1 で用意 |
+| 🧬 スキーマの変更 | テンプレートは `CREATE TABLE IF NOT EXISTS` だけ | 版番号 + 移行 SQL の仕組みを P0 で用意済み |
 | 🎯 スコープの膨張 | HA は巨大。全部作りたくなる | [05](05-feature-scope.md) のフェーズを守る。P1 の完了の目安を最優先 |
 
 ---

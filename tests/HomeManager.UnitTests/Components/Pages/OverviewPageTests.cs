@@ -10,6 +10,8 @@ using HomeManager.Services;
 
 using Microsoft.Extensions.DependencyInjection;
 
+using NSubstitute;
+
 public sealed class OverviewPageTests : MudBlazorTestBase
 {
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(5);
@@ -29,6 +31,36 @@ public sealed class OverviewPageTests : MudBlazorTestBase
             new DemoLight("ceiling", "天井照明", true, false, 255),
             new DemoSensor("room", "室温", DeviceClasses.Temperature, "°C", 23.5, null)
         ]);
+    }
+
+    [Fact]
+    public void CoreConfigUpdateRefreshesTitle()
+    {
+        // Arrange
+        var cut = Render<OverviewPage>();
+        CoreConfig.Config.Returns(new CoreConfig { Name = "別荘", Version = 2 });
+
+        // Act
+        runtime.Bus.Publish(new CoreConfigUpdatedEvent(new Dictionary<string, object?> { ["name"] = "別荘" }, EventContext.Create("admin"), runtime.Time.GetUtcNow()));
+
+        // Assert
+        cut.WaitForAssertion(() => Assert.Contains("別荘", cut.Find("h4").TextContent, StringComparison.Ordinal), Timeout);
+    }
+
+    [Fact]
+    public async Task DisposeRemovesSubscriptions()
+    {
+        // Arrange
+        var before = runtime.Bus.SubscriberCount;
+        Render<OverviewPage>();
+        var rendered = runtime.Bus.SubscriberCount;
+
+        // Act
+        await DisposeComponentsAsync();
+
+        // Assert
+        Assert.True(rendered > before);
+        Assert.Equal(before, runtime.Bus.SubscriberCount);
     }
 
     [Fact]
