@@ -17,7 +17,7 @@ public sealed class AccountServiceTests : IClassFixture<TestApplicationFactory>
     }
 
     // 初期ユーザーは初回セットアップでパスワードを変える。変えた後は今と同じパスワードには変えられない
-    [ContainerFact]
+    [Fact]
     public async Task InitialPasswordIsChanged()
     {
         // Arrange
@@ -46,7 +46,7 @@ public sealed class AccountServiceTests : IClassFixture<TestApplicationFactory>
     }
 
     // 表示名とテーマは版が合うときだけ保存する (JSONBの読み書きも確かめる)
-    [ContainerFact]
+    [Fact]
     public async Task ProfileUpdateUsesVersion()
     {
         // Arrange

@@ -18,7 +18,7 @@ public sealed class AccountEntity
 
     public bool MustChangePassword { get; set; }
 
-    // JSONBはJSONの文字列で受け取る
+    // JSONは文字列で受け取る
     public string Preferences { get; set; } = default!;
 
     public DateTime? LastLoginAt { get; set; }

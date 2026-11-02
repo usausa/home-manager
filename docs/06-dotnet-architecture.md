@@ -1,6 +1,6 @@
 # 🏗️ 06. .NET 技術スタック構成案
 
-> 📌 **前提**: [04 テンプレート調査](04-template-survey.md) の規約に乗る ＋ 利用者の方針「**DB は SQLite 以外を別途用意してよい**」
+> 📌 **前提**: [04 テンプレート調査](04-template-survey.md) の規約に乗る ＋ DB は **SQLite**（当初は「SQLite 以外を別途用意してよい」で PostgreSQL にしたが、2026-11-02 の見直しでポータブルな SQLite に変更。[12](12-db-review.md)）
 > 📌 **バージョン**: 2026-10-31 時点（**.NET 10 = 現行 LTS（10.0.14）**、.NET 11 は RC3）。テンプレートが固定している版はそれに合わせる
 > 🏷️ **決定済み**: アプリ名 **HomeManager**／置き場所はこのリポジトリ／画面の認証は **Cookie**（§10）
 
@@ -14,10 +14,10 @@
 | 🖥️ **Web 構成** | **Blazor Server（InteractiveServer）+ 同じプロセスに外部向け API（Minimal API + SignalR Hub）** のモジュラーモノリス |
 | 🧠 **コア** | `Core` に HA の 3 本柱（EventBus / StateMachine / ServiceRegistry）・エンティティモデル・レジストリ・オートメーションエンジン。ASP.NET には依存しない |
 | 🧩 **インテグレーション** | **1 インテグレーション = 1 プロジェクト**（`Integration.Demo` / `Integration.Mqtt` …）。DI の多重登録で組み込み、将来は生成器で自動登録 |
-| 🗄️ **DB** | **PostgreSQL**（別途用意）。アクセスはテンプレート標準の **Smart.Data.Accessor + Npgsql**。履歴は**時間で分割したテーブル**、必要になったら TimescaleDB |
+| 🗄️ **DB** | **SQLite**（アプリの中・WAL）。アクセスはテンプレート標準の **Smart.Data.Accessor + Microsoft.Data.Sqlite**。履歴は別ファイル（日ごとのファイルも P4 で比べる） |
 | 📡 **デバイス連携** | **手持ちの機器**（SwitchBot・ワットチェッカー・オムロン・Ping）から始める。Prometheus Exporter の実装と自作ライブラリを流用し、BLE は**共通の Bluetooth 基盤**にまとめる（[10](10-prometheus-exporter.md)）。MQTT（MQTTnet + HA 互換の Discovery）は機器があれば |
 | 🔐 **認証** | 画面は **Cookie**（テンプレート標準）、外部 API は **JWT + API キー + 長期トークン**（ハッシュで保存） |
-| 🚢 **配置** | アプリは **systemd サービス**（テンプレート標準）、PostgreSQL / Mosquitto / Zigbee2MQTT は **Docker Compose**。開発時は **Aspire** でまとめて起動 |
+| 🚢 **配置** | アプリは **systemd サービス**（テンプレート標準・DB もアプリの中）、Mosquitto / Zigbee2MQTT は MQTT の機器を使うときだけ **Docker Compose**。開発時は **Aspire** |
 
 ---
 
@@ -53,7 +53,7 @@ flowchart TB
         MORE["➕ Sun / Http / …"]
     end
 
-    PG[("🐘 PostgreSQL")]
+    PG[("🪶 SQLite")]
     BROKER["📡 Mosquitto"]
     Z2M["🐝 Zigbee2MQTT"]
     DEV["📟 LAN の機器 / ☁️ クラウド"]
@@ -122,7 +122,7 @@ flowchart TB
 | 💡 エンティティ | `Entity` + `_attr_*` | 抽象クラス `Entity` → `LightEntity` など | `EntityDescription` は `record` |
 | 🔄 コーディネーター | `DataUpdateCoordinator` | `PeriodicTimer` + `Microsoft.Extensions.Http.Resilience` | テンプレートは Resilience 不採用だが、**機器との通信には採用** |
 | 🧙 Config Flow | `data_entry_flow` | ステップ式ウィザードの状態機械 + フォーム定義 → `DynamicComponent` で描画 | ログイン画面にも流用できる |
-| 💾 `.storage` の JSON | `helpers/storage.Store` | PostgreSQL のテーブル（設定値は `jsonb`） | |
+| 💾 `.storage` の JSON | `helpers/storage.Store` | SQLite のテーブル（設定値は JSON の文字列） | |
 | 🗄️ Recorder | 専用スレッド + キュー + SQLAlchemy | `Workers/RecorderWorker` + `Channel<StateChanged>` + まとめて INSERT（Npgsql の COPY も可） | maui-server の時系列保存の型を流用 |
 | 📊 統計 | 5 分 / 1 時間の集計 | `Workers/StatisticsWorker` + 集計 SQL（TimescaleDB なら連続集計） | |
 | 🧹 削除（purge） | `purge_keep_days` | **パーティションごと DROP**（速い）、または `TelemetryRetentionWorker` 型 | |
@@ -161,8 +161,8 @@ flowchart TB
 
 | 用途 | パッケージ | 版 | Phase |
 |---|---|---|:-:|
-| 🐘 PostgreSQL | `Npgsql` | 10.0.3 | P0 |
-| 🚀 Aspire（DB / ブローカー） | `Aspire.Hosting.PostgreSQL` / `CommunityToolkit.Aspire.Hosting.Mosquitto` | 13.6.4 / 13.6.1 | P0 |
+| 🪶 SQLite | `Microsoft.Data.Sqlite`（SQLite 3.53.3 を同梱） | 10.0.13 | P1（2026-11-02 に Npgsql から変更） |
+| 🚀 Aspire（ブローカー） | `CommunityToolkit.Aspire.Hosting.Mosquitto` | 13.6.1 | P0 |
 | 🧪 テストの DB | `Testcontainers.PostgreSql` | 4.16.0 | P0 |
 | ⏰ テストの時間 | `Microsoft.Extensions.TimeProvider.Testing` | 10.11.0 | P1 |
 | 📡 MQTT | `MQTTnet` | 5.2.0 | P2 |
@@ -189,9 +189,9 @@ incubator-home/
 ├── HomeManager.slnx
 ├── Directory.Build.props / .editorconfig / Analyzers.ruleset   ← テンプレートのまま
 ├── docs/                                  📚 この調査ドキュメント
-├── deploy/                                🆕 compose.yaml（PostgreSQL / Mosquitto / Zigbee2MQTT）・systemd ユニット
+├── deploy/                                🆕 compose.yaml（Mosquitto / Zigbee2MQTT）・systemd ユニット
 ├── src/
-│   ├── HomeManager.AppHost/             🚀 Aspire: Host + PostgreSQL（+pgweb）+ Mosquitto
+│   ├── HomeManager.AppHost/             🚀 Aspire: Host + Mosquitto（DB は SQLite で Host の中）
 │   ├── HomeManager.Core/                🧠 HA のコアに当たる部分（ASP.NET 非依存）
 │   │   ├── Domain/          EntityState / EventContext / StateChanged / 各レジストリの項目（BCL だけ）
 │   │   ├── Platforms/       🆕 Entity 基底・LightEntity / SensorEntity / SwitchEntity …（HA の components/light 等）
@@ -216,7 +216,7 @@ incubator-home/
 │       ├── Settings/  Infrastructure/  Assets/Data/Migrations/*.sql（番号付きの SQL。[09](09-db-design.md) §7）
 └── tests/
     ├── HomeManager.UnitTests/           🧪 Core（FakeTimeProvider）+ bUnit
-    ├── HomeManager.IntegrationTests/    🔌 WebApplicationFactory + Testcontainers（PostgreSQL）+ MQTTnet サーバー
+    ├── HomeManager.IntegrationTests/    🔌 WebApplicationFactory + 一時ファイルの SQLite + MQTTnet サーバー
     └── HomeManager.E2ETests/            🎭 Playwright
 ```
 
@@ -228,12 +228,12 @@ incubator-home/
 
 | 点 | テンプレート | 自作版 | 理由 |
 |---|---|---|---|
-| 🗄️ DB | SQLite | **PostgreSQL** | 利用者の方針。時系列・`jsonb`・パーティション |
+| 🗄️ DB | SQLite | **SQLite**（P0 で PostgreSQL にしたが、2026-11-02 に戻した） | ポータブル（DB のサーバーもコンテナも要らない）。HA も既定は SQLite（[12](12-db-review.md)） |
 | 🧩 プロジェクト | Core + Host | + `Integration.*` | プラグインの境界を強制 |
 | 🗃️ アプリ全体の状態 | UI の状態ストアは持たない | Core に StateMachine を持つ | HA の本質（UI の状態ストアではなく**ドメインの中心**） |
 | ⏹️ CancellationToken | 一覧と出力の読み取りだけ | **全面的に伝播** | 停止・オートメーションの restart モード・タイムアウト |
 | 🔁 Http.Resilience | 不採用 | **採用** | 機器・クラウド API の一時的な失敗 |
-| 🐳 Docker | 対象外 | **ミドルウェアだけ** Compose | PostgreSQL / Mosquitto / Zigbee2MQTT |
+| 🐳 Docker | 対象外 | **ミドルウェアだけ** Compose | Mosquitto / Zigbee2MQTT（MQTT の機器を使うときだけ） |
 
 ---
 
@@ -427,24 +427,24 @@ flowchart LR
 - 🏃 アクション列は**インタプリタ**として実行（アクションの型ごとに処理を分ける）。restart モードは `CancellationToken` で前の実行を止める
 - 🔍 各ステップを `action/0/choose/1/sequence/0` のようなパスで記録 → UI でトレースを再生
 
-### 🐘 6-5. PostgreSQL での保存設計
+### 🪶 6-5. SQLite での保存設計（2026-11-02 に PostgreSQL から変更）
 
-> 🗄️ 詳しい表定義は [09 DB 設計](09-db-design.md)。ここでは要点だけ。
+> 🗄️ 詳しい表定義は [09 DB 設計](09-db-design.md)、PostgreSQL と比べた見直しは [12](12-db-review.md)。ここでは要点だけ。
 
 | 種類 | テーブル | ポイント |
 |---|---|---|
-| 🗂️ レジストリ | `core.Entity` / `Device` / `Area` / `Floor` / `Label` | 普通のテーブル。可変の設定は `JSONB` |
-| ⚙️ 接続設定 | `core.ConfigEntry` | `Data` / `Options` は `JSONB`、秘密は暗号化して `SecretData`。設定の版を持ち、読み込み時に移行 |
-| 🤖 自動化 | `core.Automation` / `Script` / `Scene` / `RunTrace` | 定義は `JSONB`。トレースは直近 N 件だけ |
-| 🏷️ 履歴のメタ | `recorder.EntityMeta`（entity_id → 数値 ID） | HA の `states_meta` と同じ正規化 |
-| 🎨 属性 | `recorder.AttributeSet`（ハッシュ + `JSONB`） | 同じ属性は 1 行を共有（HA の `state_attributes` と同じ重複排除） |
-| 📜 状態の履歴 | `recorder.StateLog`（`PARTITION BY RANGE (LastUpdated)`） | **日ごとのパーティション** → 古い日は **DROP で一瞬で削除** |
-| 📊 統計 | `recorder.StatisticMeta` / `StatisticShortTerm`（5 分）/ `StatisticHourly`（1 時間） | 集計ジョブで作る。1 時間の統計は削除しない |
+| 🗂️ レジストリ | `Entity` / `Device` / `Area` / `Floor` / `Label`（`homemanager.db`） | 普通のテーブル。可変の設定は JSON の文字列（`json_valid` で確かめる） |
+| ⚙️ 接続設定 | `ConfigEntry` | `Data` / `Options` は JSON、秘密は暗号化して `SecretData`。設定の版を持ち、読み込み時に移行 |
+| 🤖 自動化 | `Automation` / `Script` / `Scene` / `RunTrace` | 定義は JSON。トレースは直近 N 件だけ |
+| 🏷️ 履歴のメタ | `EntityMeta`（entity_id → 数値 ID。履歴のファイル） | HA の `states_meta` と同じ正規化 |
+| 🎨 属性 | `AttributeSet`（ハッシュ + JSON） | 同じ属性は 1 行を共有（HA の `state_attributes` と同じ重複排除） |
+| 📜 状態の履歴 | `StateLog`（履歴のファイル） | 古い履歴は**少しずつ DELETE + 時々 VACUUM**（HA の purge / repack）。**日ごとのファイルに分けてファイルごと消す案**も P4 で比べる |
+| 📊 統計 | `StatisticMeta` / `StatisticShortTerm`（5 分）/ `StatisticHourly`（1 時間） | 集計ジョブで作る。1 時間の統計は削除しない |
 
-- ✍️ 書き込みは `RecorderWorker` が **5 秒または N 件でまとめて** INSERT（さらに速くしたければ Npgsql のバイナリ COPY）
+- ✍️ 書き込みは `RecorderWorker` が **5 秒または N 件でまとめて** 1 トランザクションで INSERT（SQLite は書くのが 1 本ずつなので、まとめるほど速い）
 - 🧮 アクセスはテンプレート標準の **Smart.Data.Accessor（SQL ファイル）**。時系列の集計 SQL を自分で書けるので、maui-server の区間集計 SQL の型がそのまま使える
 - 🧬 スキーマの変更はテンプレートに仕組みが無い → **版番号のテーブル + 順番に流す SQL** の小さな仕組みを作る（HA の `SCHEMA_VERSION` 方式。学習ポイント）
-- ⏱️ 発展: **TimescaleDB** 拡張を入れると、ハイパーテーブル（自動パーティション）・保持ポリシー（purge）・連続集計（統計）が HA の Recorder の機能にほぼそのまま対応する
+- 🗂️ 履歴は設定と別のファイルにする → 書き込みのロックが分かれ、バックアップや保持期間も別々に扱える
 
 ---
 
@@ -454,7 +454,7 @@ flowchart LR
 |---|---|---|
 | 🧩 単体 | xunit.v3 + MTP（`dotnet run --project`）+ **`FakeTimeProvider`** + NSubstitute | StateMachine・EventBus・オートメーション（時間を進めて検証） |
 | 🎨 コンポーネント | bUnit（MudBlazor の基底クラスはテンプレートにある） | カード・フォーム・Config Flow の画面 |
-| 🔌 結合 | WebApplicationFactory + **Testcontainers（PostgreSQL）** + MQTTnet のインプロセスサーバー | インテグレーション・API・Recorder（コンテナが無ければスキップ: fullstack の `ContainerFact`） |
+| 🔌 結合 | WebApplicationFactory + **一時ファイルの SQLite**（テンプレートと同じ。コンテナは要らない）+ MQTTnet のインプロセスサーバー | インテグレーション・API・Recorder |
 | 🎭 E2E | Playwright | ログイン・ダッシュボードの即時反映 |
 
 ---
@@ -466,7 +466,6 @@ flowchart TB
     subgraph Box["🍓 Raspberry Pi 5 / ミニ PC"]
         APP["🏠 HomeManager.Host<br/>systemd サービス"]
         subgraph Docker["🐳 Docker Compose"]
-            PG[("🐘 PostgreSQL")]
             MQ["📡 Mosquitto"]
             Z2M["🐝 Zigbee2MQTT"]
         end
@@ -480,9 +479,9 @@ flowchart TB
 ```
 
 - 🐧 アプリは **`linux-arm64` / `linux-x64` で発行して systemd で常駐**（テンプレートは `AddSystemd()` 済み）。ホストのネットワークで動くので **mDNS・SSDP・ECHONET Lite のマルチキャストも素直に届く**
-- 🐳 ミドルウェアだけ Docker Compose（`deploy/compose.yaml`）。Zigbee2MQTT には USB を渡す
-- 🗄️ PostgreSQL は同じ箱でも NAS などの別の箱でもよい。RPi なら **SSD に置く**（SD カードは書き込みで傷む）
-- 🧑‍💻 開発時は **Aspire AppHost** で Host + PostgreSQL（+pgweb）+ Mosquitto を一発起動（web-fullstack の `AppHost.cs` が手本）。PostgreSQL のイメージは結合テスト・本番と同じ `18-alpine` に固定（Aspire の既定は Debian 系の `18.3` で、文字列の照合順序が環境ごとに変わるため）
+- 🐳 ミドルウェアだけ Docker Compose（`deploy/compose.yaml`）。MQTT の機器を使うときだけ Mosquitto、Zigbee2MQTT には USB を渡す
+- 🪶 DB は **SQLite のファイル**（`/var/lib/homemanager/homemanager.db`。systemd の `StateDirectory` が作る）。RPi なら **SSD に置く**（SD カードは書き込みで傷む）。バックアップはフォルダーのコピー
+- 🧑‍💻 開発時は **Aspire AppHost** で Host + Mosquitto を起動（Host だけなら `dotnet run` でよい。DB のコンテナは要らない）
 - 🔒 外出先からは Tailscale か Cloudflare Tunnel。ポートは開けない。Prometheus（既定 `0.0.0.0:9464`）は LAN 内に絞る
 
 ---
@@ -492,8 +491,8 @@ flowchart TB
 | リスク | 内容 | 対策 |
 |---|---|---|
 | 📶 Blazor Server の回線切れ | スマホのスリープ・Wi-Fi の切り替え・無人のタブレット | `reconnect.js` を「失敗したら再読み込み」に、壁掛けは定期リロード |
-| 🧠 Raspberry Pi の資源 | .NET + PostgreSQL + Mosquitto を 1 台で | RPi 5（8GB）か ミニ PC。PostgreSQL のメモリ設定を控えめに |
-| 🗄️ 履歴の肥大化 | センサーが多いと `states` が急増 | パーティション + 保持期間、属性の重複排除、記録対象のフィルタ（HA の include / exclude） |
+| 🧠 Raspberry Pi の資源 | .NET + Mosquitto を 1 台で（DB はアプリの中） | RPi 5（4GB 以上）か ミニ PC。DB のサーバーが無い分だけ軽い |
+| 🗄️ 履歴の肥大化 | センサーが多いと `states` が急増 | 保持期間（少しずつ DELETE か日ごとのファイル）、属性の重複排除、記録対象のフィルタ（HA の include / exclude） |
 | 🌊 イベントの洪水 | MQTT センサーが大量に値を送る | 上限付き Channel、`RefreshTimer` で描画を間引く、Recorder はまとめて書く |
 | 💥 インテグレーションの例外 | 1 つの例外でホストが止まる（`BackgroundService` の既定） | インテグレーションごとに捕まえて**再試行（HA の setup_retry）**。状態を画面に出す |
 | 🕐 時刻 | 日の出の計算・cron・再起動をまたぐタイマー | 内部は UTC、トリガーだけローカル時刻。`TimeProvider` に統一 |
@@ -512,7 +511,7 @@ flowchart TB
 | 🏷️ アプリ名 | **HomeManager**（プロジェクトは `HomeManager.Host` / `HomeManager.Core` / `HomeManager.Integration.*` …） |
 | 📁 置き場所 | **`D:\GitHubService\incubator-home`**（このリポジトリ。空の `template-web-home` は使わない） |
 | 🔐 画面の認証 | **Cookie 認証**（`template-blazor-server` 標準。Identity・パスキーは使わない） |
-| 🗄️ DB | **PostgreSQL**（SQLite 以外を別途用意） |
+| 🗄️ DB | ~~PostgreSQL~~ → **SQLite**（2026-11-02 の見直しで変更。[12](12-db-review.md)） |
 | 🧩 採用する機能 | **[00](00-system-features.md) の提案どおり**（⭐ 採用・🟡 保留・⛔ 見送り） |
 | 🔌 P2 でつなぐ機器 | **SwitchBot → ワットチェッカー → オムロン → Ping**（MQTT は機器があれば） |
 | 📡 Prometheus Exporter | **段階的に役割分担**（家の機器は HomeManager に移し、PC の監視は Exporter に残す） |
@@ -527,4 +526,5 @@ flowchart TB
 |:-:|---|---|
 | 1 | ✅ 🏗️ **P0: 器を作る**（2026-10-31 完了） | `template-blazor-server` をここへ複製 → `Template.BlazorServer` を `HomeManager` に改名（112 ファイル + フォルダー名・csproj 名・AppHost の `Projects.Template_BlazorServer_Host`・ログのファイル名）→ `UserSecretsId` を作り直す → 見本の機能（帳票・ファイルなど）を外す → 警告 0・テスト成功を確認 |
 | 2 | ✅ 🐘 **P0: DB を差し替える**（2026-10-31 完了。2026-11-01 に PostgreSQL 18 での結合テストと Aspire での起動・再起動を確認） | Microsoft.Data.Sqlite → Npgsql（web-fullstack を参照。Cookie 認証の Account テーブルも PostgreSQL へ）、マイグレーションの仕組みと `0001_core_initial.sql`（[09](09-db-design.md) §7）、AppHost に PostgreSQL と Mosquitto、`deploy/compose.yaml` と systemd ユニット、[09](09-db-design.md) §10 の確認事項（JSONB などの型・列名の対応） |
-| 3 | 🌱 **P1 に着手** | Core に EventBus / StateMachine / ServiceRegistry → `Integration.Demo` → ダッシュボード（ブラウザ 2 枚で即時反映を確認） |
+| 3 | ✅ 🌱 **P1**（2026-11-01〜02） | Core に EventBus / StateMachine / ServiceRegistry → `Integration.Demo` → ダッシュボード（ブラウザ 2 枚で即時反映を確認）→ 初回セットアップ・プロフィール・設定 |
+| 4 | ✅ 🪶 **P1 の締め: DB を SQLite に戻す**（2026-11-02） | 見直しで「SQLite で済む」と判断（[12](12-db-review.md)）。Microsoft.Data.Sqlite・`0001_core_initial.sql` を SQLite 用（STRICT）に・テストは一時ファイル・Aspire と配置から PostgreSQL を外す |

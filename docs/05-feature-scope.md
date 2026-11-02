@@ -2,7 +2,7 @@
 
 > 🎯 **方針**: HA の「**小さなコア + 拡張**」という骨格はそのまま学び、量（1,563 のインテグレーション）や運用基盤（OS・Supervisor・クラウド）は割り切る。
 > 📚 根拠となる分析は [02 core ソース分析](02-ha-core-architecture.md)、使う技術は [06 .NET 技術スタック構成案](06-dotnet-architecture.md) を参照。
-> 🗄️ DB は **PostgreSQL を別途用意**する前提（利用者の方針）。
+> 🗄️ DB は **SQLite**（アプリの中・ファイル 1 つ）。当初は PostgreSQL を別途用意する前提だったが、2026-11-02 の見直しで変更（[12](12-db-review.md)）。
 > 🎯 **ユーザーから見た機能の一覧と採用の判断は [00 実現する機能](00-system-features.md)**。この章はそれを実装の単位（ID）に分けたもの。🆕 は [10 Prometheus Exporter](10-prometheus-exporter.md) の検討で追加した項目、🔁 は同じ検討で変えた項目（**2026-10-31 に [00](00-system-features.md) で決定**）。
 
 ---
@@ -141,7 +141,7 @@ mindmap
 
 | ID | 機能 | HA での実体 | 自作版でのスコープ | 優先 | Phase |
 |---|---|---|---|:-:|:-:|
-| DATA-01 | 💾 Recorder | `recorder` | `state_changed` を非同期でまとめて PostgreSQL へ（正規化テーブル + 時間パーティション） | ⭐⭐⭐ | P4 |
+| DATA-01 | 💾 Recorder | `recorder` | `state_changed` を非同期でまとめて DB へ（正規化テーブル。古い履歴は少しずつ消すか、日ごとのファイルにする） | ⭐⭐⭐ | P4 |
 | DATA-02 | 📈 履歴グラフ | `history` | 期間指定で状態の推移を取得・描画 | ⭐⭐⭐ | P4 |
 | DATA-03 | 📒 ログブック | `logbook` | 「いつ・何が・誰によって」の時系列 | ⭐⭐ | P4 |
 | DATA-04 | 📊 統計 | `recorder/statistics.py` | 5 分・1 時間ごとの平均／最小／最大／積算（`state_class`） | ⭐⭐ | P4 |
@@ -184,7 +184,7 @@ mindmap
 
 | ID | 機能 | HA での実体 | 自作版でのスコープ | 優先 | Phase |
 |---|---|---|---|:-:|:-:|
-| OPS-01 | 🐧 常駐化と周辺の起動 | HA Container | アプリは **systemd**（テンプレート標準）、PostgreSQL / Mosquitto は **Docker Compose**、開発時は **Aspire** | ⭐⭐⭐ | P0 |
+| OPS-01 | 🐧 常駐化と周辺の起動 | HA Container | アプリは **systemd**（テンプレート標準・DB は SQLite でアプリの中）、Mosquitto は MQTT の機器を使うときだけ **Docker Compose**、開発時は **Aspire** | ⭐⭐⭐ | P0 |
 | OPS-02 | 🔭 ログ・可観測性 | `logger` / `system_log` | 構造化ログ・メトリクス・トレース（OpenTelemetry） | ⭐⭐ | P0 |
 | OPS-03 | ❤️ ヘルスチェック | `system_health` | `/health` と内部状態の可視化 | ⭐⭐ | P1 |
 | OPS-04 | 🍓 Raspberry Pi での常駐 | HA OS / Container | linux-arm64 で発行して systemd で 24 時間稼働 | ⭐⭐ | P5 |
@@ -218,7 +218,7 @@ flowchart LR
 |:-:|---|---|---|---|
 | 🏗️ **P0** | テンプレートから器を作る | OPS-01, OPS-02 | 改名した空のアプリが Aspire から PostgreSQL・Mosquitto と一緒に起動し、ログとヘルスチェックが見える | テンプレートの派生、Aspire、PostgreSQL、OpenTelemetry |
 | 🌱 **P1** | **コアが動く MVP** | CORE-01〜03, 05〜07 / INT-01, 02 / DEV-01 / UI-01, 03 / SEC-01 / OPS-03 | ブラウザを 2 つ開き、片方で仮想ライトを切り替えると**もう片方に即座に反映**される | イベント駆動、DI、`Channel<T>`、リアルタイム UI |
-| 🔌 **P2** 🔁 | **手持ちの機器がつながる** | CORE-04 / INT-04〜07・12 / DEV-09〜12（+ MQTT 機器があれば DEV-02）/ UI-04, 05, 11 | **SwitchBot・ワットチェッカー・オムロン・Ping が自動で登録**され、部屋に割り当てて見られる | BLE（BlueZ）・シリアル・TCP、PostgreSQL、動的フォーム、プラグイン設計 |
+| 🔌 **P2** 🔁 | **手持ちの機器がつながる** | CORE-04 / INT-04〜07・12 / DEV-09〜12（+ MQTT 機器があれば DEV-02）/ UI-04, 05, 11 | **SwitchBot・ワットチェッカー・オムロン・Ping が自動で登録**され、部屋に割り当てて見られる | BLE（BlueZ）・シリアル・TCP、SQLite、動的フォーム、プラグイン設計 |
 | 🤖 **P3** | **家が自動で動く** | AUTO-01〜08 / INT-08 / DEV-03, 04 / UI-06 / API-04 | 「日没後に人感センサーが反応したら照明 ON、5 分後に OFF」を UI で作れて、**トレース**で経路が見える | インタプリタ設計、タイマー（`TimeProvider`）、YAML |
 | 📈 **P4** 🔁 | **過去が見える** | DATA-01〜05・07・08 / AUTO-09・11 / UI-02, 07, 08 | 温度の 1 週間グラフ・長期統計・**家電ごとの電力量**が見られ、**今の Grafana も続けて使える**。ダッシュボードを編集できる | 時系列データ、バッチ書き込み、グラフ描画、Prometheus の形式 |
 | 🔐 **P5** | **外から安全に使える** | SEC-02, 03 / API-01〜03 / DATA-06 / UI-09 / OPS-04 | `curl` から長期トークンで状態の取得・サービス呼び出しができる。Raspberry Pi で常駐 | JWT、認可ポリシー、OpenAPI、ARM64 デプロイ |

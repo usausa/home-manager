@@ -23,8 +23,8 @@
 
 | Phase | 内容 | 状態 |
 |:-:|---|:-:|
-| 🏗️ P0 | `template-blazor-server` から派生・見本の機能を削除・DB を PostgreSQL に変更（マイグレーション）・Aspire に PostgreSQL と Mosquitto・配置用ファイル。PostgreSQL 18 での結合テストと Aspire での起動・再起動を確認済み（2026-11-01） | ✅ |
-| 🌱 P1 | コアの 3 本柱（EventBus・StateMachine・ServiceRegistry）・エンティティ（7 ドメイン）・インテグレーション基盤・仮想デバイス・概要ダッシュボード・エンティティ詳細・開発者ツール。**ブラウザ 2 枚で「片方の操作がもう片方に即座に反映」を確認済み（2026-11-01）**。2026-11-02 に初回セットアップ・プロフィール・設定（全体設定・システム情報）を追加。残りは CARD-02 の扱いを決めるだけ | 🚧 |
+| 🏗️ P0 | `template-blazor-server` から派生・見本の機能を削除・番号付き SQL のマイグレーション・Aspire に Mosquitto・配置用ファイル（2026-10-31〜11-01。DB は P0 で PostgreSQL にしたが、2026-11-02 の見直しで **SQLite** に変更） | ✅ |
+| 🌱 P1 | コアの 3 本柱（EventBus・StateMachine・ServiceRegistry）・エンティティ（7 ドメイン）・インテグレーション基盤・仮想デバイス・概要ダッシュボード・エンティティ詳細・開発者ツール。**ブラウザ 2 枚で「片方の操作がもう片方に即座に反映」を確認済み（2026-11-01）**。2026-11-02 に初回セットアップ・プロフィール・設定（全体設定・システム情報）を追加して機能がそろった（CARD-02 は P4 へ）。いまは見直しと整理（DB は SQLite に変更済み） | ✅ |
 
 👉 細かい進み具合は [docs/11-progress.md](docs/11-progress.md)（チェックリスト。作業しながら更新する）。
 
@@ -41,7 +41,7 @@
 | 👤 プロフィール | `/profile`（上部バーの名前） | 表示名・テーマ（ライト／ダーク／自動）・パスワードの変更 |
 | ⚙️ 設定 👑 | `/config` | 全体設定・システム情報へのメニュー |
 | 🌍 全体設定 👑 | `/config/general` | 家の名前（概要の見出し）・位置・タイムゾーン（時刻の表示）・単位系・通貨・国。ほかの画面が先に保存していたら最新の値を読み直す |
-| ℹ️ システム情報 👑 | `/config/info` | 版・稼働時間・DB（PostgreSQL の版と大きさ）・インテグレーションの状態・接続中の回線（その場で変わる） |
+| ℹ️ システム情報 👑 | `/config/info` | 版・稼働時間・DB（SQLite の版・ファイルの場所・大きさ）・インテグレーションの状態・接続中の回線（その場で変わる） |
 
 > 🧪 仮想デバイス（`HomeManager.Integration.Demo`）: 照明 3・スイッチ 2・センサー 4（温度・湿度・CO2・洗濯機の電力）・2 値センサー 2（人感・ドア）・ボタン・数値・選択肢。センサーは 5 秒ごとに値が動く。👑 = 管理者だけ
 
@@ -52,7 +52,7 @@
 ```text
 HomeManager.slnx
 ├── src/
-│   ├── HomeManager.AppHost/   🚀 Aspire（開発時: Host + PostgreSQL + pgweb + Mosquitto）
+│   ├── HomeManager.AppHost/   🚀 Aspire（開発時: Host + Mosquitto。DB は SQLite で Host の中）
 │   ├── HomeManager.Core/      🧠 ASP.NET に依存しない部分
 │   │   ├── Domain/            EntityState・EventContext・イベント・定数（ドメイン・属性・device_class）
 │   │   ├── Services/          EventBus・StateMachine・ServiceRegistry（HA の 3 本柱）・アカウント・DB
@@ -63,7 +63,7 @@ HomeManager.slnx
 │   └── HomeManager.Host/      🖥️ Blazor Server + Minimal API（Assets/Data/Migrations に番号付きの SQL・Workers/IntegrationWorker）
 ├── tests/
 │   ├── HomeManager.UnitTests/         🧪 単体（xUnit v3・bUnit）
-│   ├── HomeManager.IntegrationTests/  🔌 結合（WebApplicationFactory + PostgreSQL のコンテナ）
+│   ├── HomeManager.IntegrationTests/  🔌 結合（WebApplicationFactory + 一時ファイルの SQLite）
 │   └── HomeManager.E2ETests/          🎭 E2E（Playwright）
 ├── deploy/   🍓 本番用（compose.yaml・systemd のユニット・設定の例）
 └── docs/     📚 調査と設計
@@ -79,7 +79,7 @@ HomeManager.slnx
 |---|---|
 | .NET SDK | 10.0 |
 | Aspire CLI | 13.5 以上（AppHost が `AspireUseCliBundle=true` のため必須） |
-| コンテナの実行環境 | Docker か Podman（PostgreSQL・Mosquitto・結合テストで使う） |
+| コンテナの実行環境 | Docker か Podman（Aspire で Mosquitto を動かすときだけ。DB とテストには要らない） |
 
 ### 起動
 
@@ -88,13 +88,13 @@ aspire run
 ```
 
 - 🐧 Podman を使うときは、先に `$env:ASPIRE_CONTAINER_RUNTIME = "podman"` を設定する
-- 🧱 Podman の仮想マシンからレジストリにつながらない環境では、ホストでイメージを取得して `podman load` で読み込んでおく（使うイメージ: `postgres:18-alpine`・`sosedoff/pgweb:0.17.0`・`eclipse-mosquitto:2.1.2-alpine`）
+- 🧱 Podman の仮想マシンからレジストリにつながらない環境では、ホストでイメージを取得して `podman load` で読み込んでおく（使うイメージ: `eclipse-mosquitto:2.1.2-alpine`）
 
-- AppHost が PostgreSQL（+ pgweb）・Mosquitto・HomeManager.Host を起動し、ダッシュボードが開く
-- 接続文字列は Aspire が `ConnectionStrings__Default` として渡す（`appsettings.json` の既定値は `localhost:5432` の PostgreSQL）
+- AppHost が Mosquitto と HomeManager.Host を起動し、ダッシュボードが開く（`dotnet run --project src/HomeManager.Host` で Host だけを動かしてもよい）
+- 🪶 DB は **SQLite のファイル**。既定は実行フォルダーの `data/homemanager.db`（`ConnectionStrings__Default` で変えられる）。フォルダーは起動時に作る
 - 初期ユーザーは `admin` / `admin`。最初にログインすると初回セットアップ（パスワードの変更・家の情報）が出る
 - 起動するとインテグレーション（P1 は仮想デバイスだけ）が読み込まれ、概要にタイルが並ぶ。ブラウザを 2 つ開いて片方で照明を切り替えると、もう片方も変わる
-- DB のスキーマは起動時に `src/HomeManager.Host/Assets/Data/Migrations/*.sql` を番号順に適用する（適用した版は `core.SchemaVersion`）
+- DB のスキーマは起動時に `src/HomeManager.Host/Assets/Data/Migrations/*.sql` を番号順に適用する（適用した版は `SchemaVersion` の表）
 
 ### テスト
 
@@ -104,12 +104,10 @@ aspire run
 # 単体
 dotnet run --project tests/HomeManager.UnitTests
 
-# 結合（PostgreSQL のコンテナを使う。Docker / Podman が無ければスキップする）
+# 結合（一時ファイルの SQLite を使う。コンテナは要らない）
 dotnet run --project tests/HomeManager.IntegrationTests
 ```
 
-- コンテナの実行環境は自動で検出する。明示するなら環境変数 `TEST_CONTAINER=docker|podman|none`
-- Podman の仮想マシンが Ryuk（後片付け用）のイメージを取得できないときは `TESTCONTAINERS_RYUK_DISABLED=true` で実行する
 - E2E（Playwright）は日常の実行に含めない。初回はブラウザを入れてから実行する
 
 ```powershell
@@ -126,8 +124,9 @@ dotnet run --project tests/HomeManager.E2ETests
 dotnet publish src/HomeManager.Host -c Release -r linux-arm64 --self-contained -o publish/linux-arm64
 ```
 
-1. 🐳 ミドルウェア: `deploy/` で `.env.example` を `.env` にコピーしてパスワードを変え、`docker compose up -d`
-2. 🐧 アプリ: 発行物を `/opt/homemanager` に置き、`deploy/homemanager.service` を `/etc/systemd/system/` にコピーして `systemctl enable --now homemanager`
-3. 🔐 秘密: `deploy/homemanager.env.example` を `/etc/homemanager/homemanager.env` にコピーし、接続文字列と初期パスワードを書き換える
+1. 🐧 アプリ: 発行物を `/opt/homemanager` に置き、`deploy/homemanager.service` を `/etc/systemd/system/` にコピーして `systemctl enable --now homemanager`（DB のファイルは `/var/lib/homemanager/homemanager.db`。フォルダーは systemd が作る）
+2. 🔐 秘密: `deploy/homemanager.env.example` を `/etc/homemanager/homemanager.env` にコピーし、初期パスワードを書き換える
+3. 🐳 MQTT の機器をつなぐときだけ: `deploy/` で `docker compose up -d`（Mosquitto）
+4. 💾 バックアップ: `/var/lib/homemanager` をコピーする（動かしたままなら SQLite の `VACUUM INTO` で書き出す）
 
 > ⚠️ `deploy/` のファイルは Linux で使うので改行は LF（`.gitattributes` で指定）。

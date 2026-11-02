@@ -24,6 +24,7 @@ using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpLogging;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.ResponseCompression;
+using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.FeatureManagement;
 
@@ -33,8 +34,6 @@ using MiniDataProfiler.Listener.OpenTelemetry;
 
 using MudBlazor;
 using MudBlazor.Services;
-
-using Npgsql;
 
 using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
@@ -564,13 +563,13 @@ public static class ApplicationExtensions
             var listener = CreateProfileListener(p, p.GetRequiredService<ProfilerSetting>());
             if (listener is not null)
             {
-                return new DelegateDbProvider(() => new ProfileDbConnection(listener, new NpgsqlConnection(connectionString)));
+                return new DelegateDbProvider(() => new ProfileDbConnection(listener, new SqliteConnection(connectionString)));
             }
 
-            return new DelegateDbProvider(() => new NpgsqlConnection(connectionString));
+            return new DelegateDbProvider(() => new SqliteConnection(connectionString));
         });
         builder.Services.AddSingleton<IDialect>(new DelegateDialect(
-            static ex => ex is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation },
+            static ex => ex is SqliteException { SqliteErrorCode: 19 } or SqliteException { SqliteExtendedErrorCode: 1555 or 2067 },
             static x => Regex.Replace(x, @"[%_\\]", @"\$0")));
         builder.Services.AddDataAccessors(typeof(AccountAccessor).Assembly);
 
@@ -692,7 +691,8 @@ public static class ApplicationExtensions
         // Prepare instrument
         app.Services.GetRequiredService<ApplicationInstrument>();
 
-        // Prepare database (apply numbered migration files)
+        // Prepare database (create the data directory and apply numbered migration files)
+        PrepareDatabaseDirectory(app.Configuration);
         await app.Services.GetRequiredService<DatabaseService>().MigrateAsync(MigrationPath, CancellationToken.None);
 
         // Seed initial account (startup has no boundary, so the service context is started here)
@@ -709,6 +709,22 @@ public static class ApplicationExtensions
 
         // Prepare system information (uptime starts here)
         app.Services.GetRequiredService<ISystemInfoService>();
+    }
+
+    // SQLiteはDBファイルのフォルダーを作らないため、先に作っておく
+    private static void PrepareDatabaseDirectory(IConfiguration configuration)
+    {
+        var builder = new SqliteConnectionStringBuilder(configuration.GetConnectionString("Default"));
+        if ((builder.Mode == SqliteOpenMode.Memory) || String.IsNullOrEmpty(builder.DataSource) || (builder.DataSource == ":memory:"))
+        {
+            return;
+        }
+
+        var directory = Path.GetDirectoryName(Path.GetFullPath(builder.DataSource));
+        if (!String.IsNullOrEmpty(directory))
+        {
+            Directory.CreateDirectory(directory);
+        }
     }
 
     //--------------------------------------------------------------------------------

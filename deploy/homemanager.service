@@ -3,7 +3,7 @@
 #   sudo systemctl enable --now homemanager
 [Unit]
 Description=HomeManager
-After=network-online.target docker.service
+After=network-online.target
 Wants=network-online.target
 
 [Service]
@@ -15,6 +15,8 @@ Restart=always
 RestartSec=5
 KillSignal=SIGINT
 User=homemanager
+# DB（SQLite）のファイルを置く /var/lib/homemanager を作る（所有者は User）
+StateDirectory=homemanager
 # BLE（BlueZ）とシリアル（オムロンの環境センサー）を使うためのグループ（P2）
 SupplementaryGroups=bluetooth dialout
 Environment=ASPNETCORE_ENVIRONMENT=Production

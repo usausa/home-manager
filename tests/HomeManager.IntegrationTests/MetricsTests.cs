@@ -19,7 +19,7 @@ public sealed partial class MetricsTests : IClassFixture<TestApplicationFactory>
     [GeneratedRegex("name=\"__RequestVerificationToken\"[^>]*value=\"([^\"]+)\"")]
     private static partial Regex AntiforgeryTokenRegex();
 
-    [ContainerFact]
+    [Fact]
     public async Task ApiRequestIsCounted()
     {
         // Arrange

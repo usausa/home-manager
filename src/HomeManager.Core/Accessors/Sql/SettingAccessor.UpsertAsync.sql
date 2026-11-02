@@ -1,8 +1,8 @@
 INSERT INTO
-    core.Setting (Key, Value, UpdatedAt)
+    Setting (Key, Value, UpdatedAt)
 VALUES
-    (/*@ key */'', CAST(/*@ value */'{}' AS JSONB), /*@ updatedAt */'')
+    (/*@ key */'', /*@ value */'{}', /*@ updatedAt */'')
 ON CONFLICT (Key) DO UPDATE SET
-    Value = EXCLUDED.Value,
-    UpdatedAt = EXCLUDED.UpdatedAt,
-    Version = core.Setting.Version + 1
+    Value = excluded.Value,
+    UpdatedAt = excluded.UpdatedAt,
+    Version = Version + 1

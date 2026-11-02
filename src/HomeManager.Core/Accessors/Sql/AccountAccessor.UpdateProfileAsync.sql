@@ -1,8 +1,8 @@
 UPDATE
-    core.Account
+    Account
 SET
     DisplayName = /*@ displayName */'',
-    Preferences = CAST(/*@ preferences */'{}' AS JSONB),
+    Preferences = /*@ preferences */'{}',
     UpdatedAt = /*@ updatedAt */'',
     Version = Version + 1
 WHERE

@@ -1,6 +1,6 @@
 SELECT
     *
 FROM
-    core.Setting
+    Setting
 WHERE
     Key = /*@ key */'core.config'

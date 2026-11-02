@@ -8,7 +8,7 @@ using HomeManager.Integrations;
 
 using Microsoft.Extensions.DependencyInjection;
 
-// 全体設定・初回セットアップ・システム情報 (core.Settingとシステムの情報)
+// 全体設定・初回セットアップ・システム情報 (Settingの表とシステムの情報)
 public sealed class SystemServiceTests : IClassFixture<TestApplicationFactory>
 {
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(10);
@@ -22,7 +22,7 @@ public sealed class SystemServiceTests : IClassFixture<TestApplicationFactory>
         this.factory = factory;
     }
 
-    [ContainerFact]
+    [Fact]
     public async Task CoreConfigUpdateSavesAndPublishesChanges()
     {
         // Arrange
@@ -56,7 +56,7 @@ public sealed class SystemServiceTests : IClassFixture<TestApplicationFactory>
     }
 
     // ほかのプロセスがDBを書き換えても、homemanager.reload_core_configで読み直せる
-    [ContainerFact]
+    [Fact]
     public async Task ReloadCoreConfigPicksUpExternalChange()
     {
         // Arrange
@@ -78,7 +78,7 @@ public sealed class SystemServiceTests : IClassFixture<TestApplicationFactory>
         Assert.Equal(current.Version + 1, service.Config.Version);
     }
 
-    [ContainerFact]
+    [Fact]
     public async Task OnboardingStepIsSaved()
     {
         // Arrange
@@ -95,7 +95,7 @@ public sealed class SystemServiceTests : IClassFixture<TestApplicationFactory>
         Assert.True(service.IsDone(OnboardingSteps.CoreConfig));
     }
 
-    [ContainerFact]
+    [Fact]
     public async Task SystemInfoIncludesDatabaseAndIntegrations()
     {
         // Arrange
@@ -114,7 +114,8 @@ public sealed class SystemServiceTests : IClassFixture<TestApplicationFactory>
 
         // Assert
         Assert.NotNull(info?.Database);
-        Assert.StartsWith("18", info.Database.ServerVersion, StringComparison.Ordinal);
+        Assert.StartsWith("3.", info.Database.Version, StringComparison.Ordinal);
+        Assert.EndsWith(".db", info.Database.File, StringComparison.Ordinal);
         Assert.True(info.Database.Size > 0);
         Assert.StartsWith("0.0.1", info.Version, StringComparison.Ordinal);
         Assert.True(info.EntityCount > 0);

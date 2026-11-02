@@ -11,5 +11,5 @@ public sealed record SystemInfo(
     int ServiceCount,
     IReadOnlyList<IntegrationInfo> Integrations);
 
-// Sizeはバイト数
-public sealed record DatabaseInfo(string ServerVersion, long Size);
+// SQLiteの版・DBファイルの場所・大きさ (バイト数)
+public sealed record DatabaseInfo(string Version, string File, long Size);

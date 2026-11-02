@@ -1,7 +1,7 @@
 UPDATE
-    core.Setting
+    Setting
 SET
-    Value = CAST(/*@ value */'{}' AS JSONB),
+    Value = /*@ value */'{}',
     UpdatedAt = /*@ updatedAt */'',
     Version = Version + 1
 WHERE

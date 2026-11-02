@@ -31,14 +31,15 @@ public sealed class SystemInfoPageTests : SessionTestBase
     public void RenderShowsVersionDatabaseIntegrationsAndCircuits()
     {
         // Arrange
-        systemInfoService.GetInfoAsync(Arg.Any<CancellationToken>()).Returns(CreateInfo(new DatabaseInfo("18.0", 8 * 1024 * 1024)));
+        systemInfoService.GetInfoAsync(Arg.Any<CancellationToken>()).Returns(CreateInfo(new DatabaseInfo("3.53.3", "/var/lib/homemanager/homemanager.db", 8 * 1024 * 1024)));
 
         // Act
         var cut = Render<SystemInfoPage>();
 
         // Assert
         cut.WaitForAssertion(() => Assert.Contains("0.0.1（4b56081）", cut.Markup, StringComparison.Ordinal));
-        Assert.Contains("PostgreSQL 18.0", cut.Markup, StringComparison.Ordinal);
+        Assert.Contains("SQLite 3.53.3", cut.Markup, StringComparison.Ordinal);
+        Assert.Contains("/var/lib/homemanager/homemanager.db", cut.Markup, StringComparison.Ordinal);
         Assert.Contains("8.0 MB", cut.Markup, StringComparison.Ordinal);
         Assert.Contains("デモ (仮想デバイス)", cut.Markup, StringComparison.Ordinal);
         Assert.Contains("読み込み済み", cut.Markup, StringComparison.Ordinal);
@@ -51,7 +52,7 @@ public sealed class SystemInfoPageTests : SessionTestBase
     public void CircuitChangeIsReflected()
     {
         // Arrange
-        systemInfoService.GetInfoAsync(Arg.Any<CancellationToken>()).Returns(CreateInfo(new DatabaseInfo("18.0", 1024)));
+        systemInfoService.GetInfoAsync(Arg.Any<CancellationToken>()).Returns(CreateInfo(new DatabaseInfo("3.53.3", "homemanager.db", 1024)));
         var cut = Render<SystemInfoPage>();
 
         // Act
@@ -72,7 +73,7 @@ public sealed class SystemInfoPageTests : SessionTestBase
         var cut = Render<SystemInfoPage>();
 
         // Assert
-        cut.WaitForAssertion(() => Assert.Contains("データベースに接続できません。", cut.Markup, StringComparison.Ordinal));
+        cut.WaitForAssertion(() => Assert.Contains("データベースを読めません。", cut.Markup, StringComparison.Ordinal));
     }
 
     private static SystemInfo CreateInfo(DatabaseInfo? database) =>

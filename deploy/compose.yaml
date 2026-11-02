@@ -1,26 +1,11 @@
 # HomeManager の周辺ミドルウェア（本番: Raspberry Pi / ミニ PC）
-# アプリ本体は systemd で動かす（homemanager.service）。ここではミドルウェアだけを動かす
+# アプリ本体は systemd で動かす（homemanager.service）。DB は SQLite でアプリの中にあるので、ここには無い
+# MQTT の機器（Zigbee2MQTT・Tasmota など）をつなぐときだけ使う
 #
 # 使い方:
-#   cp .env.example .env   # パスワードを書き換える
 #   docker compose up -d   # Podman なら podman compose up -d
 
 services:
-  postgres:
-    image: postgres:18-alpine
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: homemanager
-      POSTGRES_USER: homemanager
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?.env に POSTGRES_PASSWORD を設定する}
-      TZ: Asia/Tokyo
-    ports:
-      # アプリは同じ機械で動くので、外には公開しない
-      - "127.0.0.1:5432:5432"
-    volumes:
-      # PostgreSQL 18 のイメージはデータを /var/lib/postgresql 以下に置く
-      - postgres-data:/var/lib/postgresql
-
   mosquitto:
     image: eclipse-mosquitto:2
     restart: unless-stopped
@@ -49,7 +34,6 @@ services:
   #     TZ: Asia/Tokyo
 
 volumes:
-  postgres-data:
   mosquitto-data:
   mosquitto-log:
   # zigbee2mqtt-data:

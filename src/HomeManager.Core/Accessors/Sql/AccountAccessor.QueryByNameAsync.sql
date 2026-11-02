@@ -1,6 +1,6 @@
 SELECT
     *
 FROM
-    core.Account
+    Account
 WHERE
     Name = /*@ name */'admin'

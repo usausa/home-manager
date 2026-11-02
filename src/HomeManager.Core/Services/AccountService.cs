@@ -33,7 +33,7 @@ public sealed class AccountService : IAccountService
         if (count == 0)
         {
             var context = contextProvider.Current;
-            // 初期ユーザーは初回セットアップでパスワードの変更を必須にする。TIMESTAMPTZの列にはUTCで書く
+            // 初期ユーザーは初回セットアップでパスワードの変更を必須にする。時刻はUTCで書く
             await accountAccessor.InsertAsync(option.Id, option.Id, passwordProvider.Generate(option.Password), role, true, context.Now.UtcDateTime);
         }
     }

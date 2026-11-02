@@ -6,9 +6,6 @@ using HomeManager.Accessors;
 
 public sealed class DatabaseService
 {
-    // 複数のプロセスが同時にマイグレーションしないためのアドバイザリーロックのキー
-    private const long MigrationLockKey = 7_311_116_710_212_001;
-
     private readonly IDbProvider provider;
 
     private readonly SchemaAccessor schemaAccessor;
@@ -33,35 +30,31 @@ public sealed class DatabaseService
         await using var con = provider.CreateConnection();
         await con.OpenAsync(cancellationToken);
 
-        await schemaAccessor.LockAsync(con, MigrationLockKey, cancellationToken);
-        try
+        // 書き込み中も読めるようにWALにする (DBファイルに残る設定。トランザクションの外で行う)
+        await schemaAccessor.EnableWriteAheadLogAsync(con, cancellationToken);
+
+        // アプリは1プロセスでDBファイルを持つため、マイグレーションのロックは取らない
+        await schemaAccessor.CreateVersionTableAsync(con, cancellationToken);
+        var applied = (await schemaAccessor.QueryVersionListAsync(con, cancellationToken)).ToDictionary(static x => x.Version);
+
+        foreach (var migration in migrations)
         {
-            await schemaAccessor.CreateVersionTableAsync(con, cancellationToken);
-            var applied = (await schemaAccessor.QueryVersionListAsync(con, cancellationToken)).ToDictionary(static x => x.Version);
-
-            foreach (var migration in migrations)
+            if (applied.TryGetValue(migration.Version, out var entity))
             {
-                if (applied.TryGetValue(migration.Version, out var entity))
+                // 適用済みのファイルが書き換えられていたら起動を止める
+                if (entity.Checksum != migration.Checksum)
                 {
-                    // 適用済みのファイルが書き換えられていたら起動を止める
-                    if (entity.Checksum != migration.Checksum)
-                    {
-                        throw new InvalidOperationException($"Applied migration was modified. name=[{migration.Name}]");
-                    }
-
-                    continue;
+                    throw new InvalidOperationException($"Applied migration was modified. name=[{migration.Name}]");
                 }
 
-                // 1ファイル=1トランザクション(PostgreSQLはDDLも巻き戻せる)
-                await using var tx = await con.BeginTransactionAsync(cancellationToken);
-                await schemaAccessor.ExecuteAsync(tx, migration.Sql, cancellationToken);
-                await schemaAccessor.InsertVersionAsync(tx, migration.Version, migration.Name, migration.Checksum, timeProvider.GetUtcNow().UtcDateTime, cancellationToken);
-                await tx.CommitAsync(cancellationToken);
+                continue;
             }
-        }
-        finally
-        {
-            await schemaAccessor.UnlockAsync(con, MigrationLockKey, cancellationToken);
+
+            // 1ファイル=1トランザクション(SQLiteもDDLを巻き戻せる)
+            await using var tx = await con.BeginTransactionAsync(cancellationToken);
+            await schemaAccessor.ExecuteAsync(tx, migration.Sql, cancellationToken);
+            await schemaAccessor.InsertVersionAsync(tx, migration.Version, migration.Name, migration.Checksum, timeProvider.GetUtcNow().UtcDateTime, cancellationToken);
+            await tx.CommitAsync(cancellationToken);
         }
     }
 

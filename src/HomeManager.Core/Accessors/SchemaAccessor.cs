@@ -3,11 +3,8 @@ namespace HomeManager.Accessors;
 [DataAccessor]
 public sealed partial class SchemaAccessor
 {
-    [Execute]
-    public partial ValueTask<int> LockAsync(DbConnection con, long key, CancellationToken cancellationToken);
-
-    [Execute]
-    public partial ValueTask<int> UnlockAsync(DbConnection con, long key, CancellationToken cancellationToken);
+    [ExecuteScalar]
+    public partial ValueTask<string> EnableWriteAheadLogAsync(DbConnection con, CancellationToken cancellationToken);
 
     [Execute]
     public partial ValueTask<int> CreateVersionTableAsync(DbConnection con, CancellationToken cancellationToken);

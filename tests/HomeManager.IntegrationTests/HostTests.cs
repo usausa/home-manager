@@ -11,7 +11,7 @@ public sealed class HostTests : IClassFixture<TestApplicationFactory>
         this.factory = factory;
     }
 
-    [ContainerFact]
+    [Fact]
     public async Task HealthReturnsOk()
     {
         // Arrange
@@ -24,7 +24,7 @@ public sealed class HostTests : IClassFixture<TestApplicationFactory>
         response.EnsureSuccessStatusCode();
     }
 
-    [ContainerFact]
+    [Fact]
     public async Task RootWithoutAuthShowsLoginPage()
     {
         // Arrange
@@ -39,7 +39,7 @@ public sealed class HostTests : IClassFixture<TestApplicationFactory>
         Assert.Contains("login", content, StringComparison.OrdinalIgnoreCase);
     }
 
-    [ContainerFact]
+    [Fact]
     public async Task ApiWithoutAuthReturnsUnauthorized()
     {
         // Arrange
@@ -53,7 +53,7 @@ public sealed class HostTests : IClassFixture<TestApplicationFactory>
         Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
     }
 
-    [ContainerFact]
+    [Fact]
     public async Task OpenApiDocumentDescribesResponses()
     {
         // Arrange

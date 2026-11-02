@@ -114,7 +114,7 @@ flowchart LR
 
 | ID | 実現する機能 | 例 | 由来 | 決定 | Phase |
 |---|---|---|:-:|:-:|:-:|
-| F-60 | 🍓 Raspberry Pi で 24 時間稼働（アプリは systemd、PostgreSQL・Mosquitto は Docker） | | 🆕 | ⭐ | P0 / P5 |
+| F-60 | 🍓 Raspberry Pi で 24 時間稼働（アプリは systemd・DB は SQLite でアプリの中、Mosquitto は MQTT の機器を使うときだけ Docker） | | 🆕 | ⭐ | P0 / P5 |
 | F-61 | 🔭 ログ・ヘルスチェック・アプリのメトリクス | | 🏠 | ⭐ | P0 |
 | F-62 | ℹ️ システム情報（版・稼働時間・DB の大きさ・各連携の状態） | | 🏠 | ⭐ | P1 |
 | F-63 | 🩹 修復（要対応事項の一覧と案内） | | 🏠 | 🟡 | P6 |

@@ -6,12 +6,10 @@ using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 
-using Testcontainers.PostgreSql;
-
-// テストごとに作り、InitializeAsyncでPostgreSQLコンテナを起動してからサーバーを開始する
-public sealed class E2EApplicationFactory : WebApplicationFactory<Program>, IAsyncLifetime
+// テストごとに作り、一時ファイルのSQLiteでサーバーを開始する (コンテナは要らない)
+public sealed class E2EApplicationFactory : WebApplicationFactory<Program>
 {
-    private PostgreSqlContainer? container;
+    private readonly string databaseFile = Path.Combine(Path.GetTempPath(), $"homemanager-e2e-{Guid.NewGuid():N}.db");
 
     public string ServerAddress
     {
@@ -22,29 +20,34 @@ public sealed class E2EApplicationFactory : WebApplicationFactory<Program>, IAsy
         }
     }
 
-    public async ValueTask InitializeAsync()
-    {
-        container = new PostgreSqlBuilder("postgres:18-alpine").Build();
-        await container.StartAsync();
-    }
-
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseSetting("http_ports", string.Empty);
-        builder.UseSetting("ConnectionStrings:Default", container?.GetConnectionString() ?? throw new InvalidOperationException("InitializeAsync is not called."));
+        builder.UseSetting("ConnectionStrings:Default", $"Data Source={databaseFile};Foreign Keys=True;Pooling=False");
         builder.UseSetting("Prometheus:Uri", string.Empty);
-        builder.UseSetting("Notification:Enable", "false");
         builder.UseSetting("Profiler:SqlLog:Enable", "false");
         builder.UseSetting("Profiler:SqlTelemetry:Enable", "false");
         builder.UseSetting("Log:HttpLog", "false");
     }
 
-    public override async ValueTask DisposeAsync()
+    protected override void Dispose(bool disposing)
     {
-        await base.DisposeAsync();
-        if (container is not null)
+        base.Dispose(disposing);
+
+        if (disposing)
         {
-            await container.DisposeAsync();
+            // WALの補助ファイル (-wal / -shm) も消す
+            foreach (var file in new[] { databaseFile, databaseFile + "-wal", databaseFile + "-shm" })
+            {
+                try
+                {
+                    File.Delete(file);
+                }
+                catch (IOException)
+                {
+                    // Ignore
+                }
+            }
         }
     }
 }

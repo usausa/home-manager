@@ -1,5 +1,5 @@
 UPDATE
-    core.Account
+    Account
 SET
     Password = /*@ password */NULL,
     MustChangePassword = FALSE,

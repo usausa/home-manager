@@ -233,7 +233,7 @@ src/  Domain(BCLのみ) / Contracts(DTO の record を共有) / Backend.Core / B
 | 🗝️ 長期トークン | blazor-wasm `RefreshTokenService` | 名前・有効期限・失効の列を足す【推測】 |
 | 🌐 外部 API の作法 | web-api（版の管理・ETag・RateLimiter） | |
 | 🔀 リバースプロキシの背後 | maui-server `Settings/ForwardedHeadersSetting`（設定から CIDR を読む） | 他の 5 本は全面的に信頼している（ガイドと食い違い） |
-| 🐘 PostgreSQL へ移す | web-fullstack | |
+| 🐘 PostgreSQL へ移す | web-fullstack | 2026-11-02 に SQLite へ戻したので使わない（[12](12-db-review.md)） |
 | 🧩 インテグレーションの登録 | DI の多重登録、または library-with-generator の ModuleInitializer | |
 | 📱 ネイティブのクライアント | template-maui `Services/MonitorConnection.cs`（SignalR クライアント） | |
 

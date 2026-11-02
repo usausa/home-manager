@@ -37,6 +37,7 @@
 | 09 | [🗄️ DB 設計](09-db-design.md) | PostgreSQL（core 27 表・recorder 11 表）・パーティション・マイグレーション | ✅ 完了 |
 | 10 | [📡 Prometheus Exporter の取り込み](10-prometheus-exporter.md) | 手持ちの機器の計測（SwitchBot・ワットチェッカー・オムロン …）を HomeManager に取り込む検討 | ✅ 完了 |
 | 11 | [📋 進捗チェックリスト](11-progress.md) | 実装の進み具合（フェーズごとのチェックリスト）。作業しながら更新する | 🚧 更新中 |
+| 12 | [🗄️ DB の見直し](12-db-review.md) | PostgreSQL は必要か。SQLite で済むか（要件ごとの比較・切り替えでやること・今後の検討事項） | ✅ SQLite に決定 |
 
 凡例: ✅ 完了 ／ 🚧 調査中・作成中 ／ ⏳ 未着手
 
@@ -73,8 +74,8 @@
 | 🖥️ Web | **Blazor Server + 同じプロセスに外部 API（Minimal API + SignalR Hub）** |
 | 🧠 コア | `Core` に HA の 3 本柱・エンティティ・レジストリ・オートメーション（ASP.NET 非依存） |
 | 🧩 拡張 | **1 インテグレーション = 1 プロジェクト**（`Integration.Demo` / `Integration.Mqtt` …） |
-| 🗄️ DB | **PostgreSQL**（別途用意）+ Smart.Data.Accessor + Npgsql、履歴は時間パーティション |
-| 🚢 配置 | アプリは **systemd**、PostgreSQL / Mosquitto / Zigbee2MQTT は **Docker Compose**、開発は **Aspire** |
+| 🗄️ DB | **SQLite**（アプリの中・ファイル 1 つ）+ Smart.Data.Accessor + Microsoft.Data.Sqlite。履歴（P4）は別ファイル（2026-11-02 に PostgreSQL から変更。[12](12-db-review.md)） |
+| 🚢 配置 | アプリは **systemd**（DB もアプリの中）、Mosquitto / Zigbee2MQTT は MQTT の機器を使うときだけ **Docker Compose**、開発は **Aspire** |
 
 → 詳しくは [04](04-template-survey.md)・[06](06-dotnet-architecture.md)
 
@@ -87,7 +88,7 @@ flowchart LR
 
 > 🎯 最初の山場は **P1 の完了の目安**: 「ブラウザを 2 つ開き、片方で仮想ライトを切り替えると、もう片方に即座に反映される」
 > 🏗️ **実装の状況**: P0 ✅（2026-10-31。`template-blazor-server` から派生し、PostgreSQL・マイグレーション・Aspire・配置用ファイルまで。2026-11-01 に PostgreSQL 18 での結合テストと Aspire での起動を確認）。
-> P1 🚧（2026-11-01。コアの 3 本柱・エンティティ・インテグレーション基盤・仮想デバイス・概要・エンティティ詳細・開発者ツール。**完了の目安「ブラウザ 2 枚で即座に反映」を確認済み**。2026-11-02 に初回セットアップ・プロフィール・設定（全体設定・システム情報）を追加。残りは CARD-02 の扱いを決めるだけ）。詳しくはリポジトリ直下の [README](../README.md)、進み具合は [11 進捗チェックリスト](11-progress.md)
+> P1 ✅（2026-11-01〜02。コアの 3 本柱・エンティティ・インテグレーション基盤・仮想デバイス・概要・エンティティ詳細・開発者ツール。**完了の目安「ブラウザ 2 枚で即座に反映」を確認済み**。2026-11-02 に初回セットアップ・プロフィール・設定（全体設定・システム情報）を追加して機能がそろった。CARD-02 は P4 へ。いまは見直しと整理）。詳しくはリポジトリ直下の [README](../README.md)、進み具合は [11 進捗チェックリスト](11-progress.md)
 
 ### 📐 5. 設計（画面・API・DB）
 
@@ -95,7 +96,7 @@ flowchart LR
 |---|---|
 | 🖥️ [画面](07-screen-design.md) | HA と同じ並び（概要・ダッシュボード・履歴・ログブック・開発者ツール・設定）。**画面 42**（P1 は 12）・ダイアログ 15・カード 13 種。状態を表示する画面はリアルタイム更新 |
 | 🌐 [API](08-api-design.md) | 画面はコアを直接呼ぶ。外部向けは **REST `/api/v1`**（約 40 本）+ **SignalR `/hubs/home`**（HA と同じ差分圧縮）+ Webhook。機器の操作は HA と同じ名前の**サービス**（`light.turn_on` など約 80） |
-| 🗄️ [DB](09-db-design.md) | PostgreSQL を **`core`**（設定・レジストリ・自動化）と **`recorder`**（履歴・統計）に分ける。履歴は**日ごとのパーティション**で保持期間を管理。番号付き SQL のマイグレーション |
+| 🗄️ [DB](09-db-design.md) | **SQLite**。設定・レジストリ・自動化（`homemanager.db`）と履歴・統計（別ファイル）に分ける。古い履歴は少しずつ消す（日ごとのファイルも P4 で比べる）。番号付き SQL のマイグレーション |
 
 ### ✅ 6. 決定事項（2026-10-31）
 
@@ -104,7 +105,7 @@ flowchart LR
 | 🏷️ アプリ名 | **HomeManager**（プロジェクトは `HomeManager.Host` / `HomeManager.Core` …） |
 | 📁 置き場所 | **この `incubator-home`**（空の `template-web-home` は使わない） |
 | 🔐 画面の認証 | **Cookie 認証**（`template-blazor-server` 標準） |
-| 🗄️ DB | **PostgreSQL**（SQLite 以外を別途用意） |
+| 🗄️ DB | ~~PostgreSQL~~ → **SQLite**（2026-11-02 の見直しで変更。ポータブルにする。[12](12-db-review.md)） |
 | 🧩 採用する機能 | **[00](00-system-features.md) の提案どおり**（⭐ 採用・🟡 保留・⛔ 見送り） |
 | 🔌 P2 でつなぐ機器 | **SwitchBot → ワットチェッカー → オムロン → Ping**（MQTT は機器があれば） |
 | 📡 Prometheus Exporter | **段階的に役割分担**（家の機器は HomeManager、PC の監視は Exporter） |

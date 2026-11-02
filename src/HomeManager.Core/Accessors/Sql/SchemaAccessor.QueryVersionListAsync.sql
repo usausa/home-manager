@@ -4,6 +4,6 @@ SELECT
     Checksum,
     AppliedAt
 FROM
-    core.SchemaVersion
+    SchemaVersion
 ORDER BY
     Version

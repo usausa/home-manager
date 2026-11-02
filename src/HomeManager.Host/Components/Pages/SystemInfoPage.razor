@@ -32,12 +32,13 @@
             <MudPaper Outlined="true" Class="pa-4">
                 <MudText Typo="Typo.h6" Class="mb-2">🗄️ データベース</MudText>
                 <Condition Value="!HasDatabase">
-                    <MudAlert Severity="Severity.Error">データベースに接続できません。</MudAlert>
+                    <MudAlert Severity="Severity.Error">データベースを読めません。</MudAlert>
                 </Condition>
                 <Condition Value="HasDatabase">
                     <MudSimpleTable Dense="true" Class="info-table">
                         <tbody>
-                            <tr><th>種類</th><td>PostgreSQL @Info.Database?.ServerVersion</td></tr>
+                            <tr><th>種類</th><td>SQLite @Info.Database?.Version</td></tr>
+                            <tr><th>ファイル</th><td>@Info.Database?.File</td></tr>
                             <tr><th>大きさ</th><td>@DatabaseSizeText</td></tr>
                         </tbody>
                     </MudSimpleTable>

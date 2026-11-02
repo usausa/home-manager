@@ -1,6 +1,7 @@
 # 🗄️ 09. DB 設計
 
-> 📌 **前提**: **PostgreSQL 18**（別途用意）／ アクセスはテンプレート標準の **Smart.Data.Accessor（SQL ファイル）+ Npgsql** ／ 命名はテンプレートどおり **PascalCase・単数形**（`Account`・`Data` に倣う）
+> 📌 **前提**: **SQLite**（アプリの中・WAL。2026-11-02 に PostgreSQL 18 から変更 → [12 DB の見直し](12-db-review.md)）／ アクセスはテンプレート標準の **Smart.Data.Accessor（SQL ファイル）+ Microsoft.Data.Sqlite** ／ 命名はテンプレートどおり **PascalCase・単数形**（`Account`・`Data` に倣う）
+> 🪶 **SQLite に変えたときの読み方**: 表の定義の型は**論理的な型**（`TIMESTAMPTZ`・`JSONB` など）のまま書いてあり、SQLite では §2 の対応表のとおりに置き換える。`core.` / `recorder.` は**どのファイルに置くか**を表す（SQL では接頭辞を付けない）
 > 🔗 関連: [02 §5・§8](02-ha-core-architecture.md)（HA のレジストリと Recorder）・[06 §6-5](06-dotnet-architecture.md)・[07 画面](07-screen-design.md)・[08 API](08-api-design.md)
 
 ---
@@ -9,11 +10,11 @@
 
 | # | ポイント |
 |:-:|---|
-| 🗂️ | スキーマは 2 つ: **`core`**（設定・レジストリ・自動化・認証 = 小さくて大事）と **`recorder`**（履歴・統計 = 大きくて消えても致命的でない） |
+| 🗂️ | ファイルは 2 つ: **`core`** = `homemanager.db`（設定・レジストリ・自動化・認証 = 小さくて大事）と **`recorder`** = 履歴のファイル（履歴・統計 = 大きくて消えても致命的でない。P4） |
 | 📊 | テーブルは **core 27**（P1: 3・P2: 10・P3: 8・P4: 1・P5: 2・P6: 3）、**recorder 11**（P4） |
 | 🧠 | 「今の状態」は DB に置かない（メモリの StateMachine）。DB に入れるのは**設定（永続）**と**履歴（時系列）**だけ |
 | 🆔 | ID は 3 種類: 人が読む **slug**（エリアなど）／ 内部の **UUIDv7**（デバイス・エンティティなど）／ 行の多い表の**連番**（履歴・トークン） |
-| ⏱️ | 履歴（`StateLog`・`EventLog`）は**日ごとのパーティション** → 保持期間を過ぎた日は DROP で一瞬で消す |
+| ⏱️ | 保持期間を過ぎた履歴（`StateLog`・`EventLog`）は**少しずつ DELETE + 時々 VACUUM**（HA の purge / repack と同じ）。**日ごとのファイルに分けてファイルごと消す案**も P4 で比べる（§6-7） |
 | 🔐 | インテグレーションの秘密情報（パスワード・API トークン）は Data Protection で**暗号化**して保存 |
 
 ---
@@ -45,31 +46,47 @@
 
 | 項目 | 決まり |
 |---|---|
-| 🏷️ 命名 | テーブル・列は **PascalCase**、テーブルは**単数形**（テンプレートの `Account`・`Data` に倣う）。引用符は付けない（PostgreSQL の中では小文字として扱われる） |
-| 🗂️ スキーマ | `core` と `recorder` に分ける → バックアップ・保持期間・権限を別々に扱える |
+| 🏷️ 命名 | テーブル・列は **PascalCase**、テーブルは**単数形**（テンプレートの `Account`・`Data` に倣う）。引用符は付けない |
+| 🗂️ ファイル | `core`（`homemanager.db`）と `recorder`（履歴のファイル）に分ける → 書き込みのロック・バックアップ・保持期間を別々に扱える |
+| 🧱 表 | **`STRICT`** で作る（違う型の値を入れたらエラー）。外部キーは接続文字列の `Foreign Keys=True` で有効にする。ジャーナルは **WAL**（書き込み中も読める） |
 | 🆔 ID | 下の表の 3 種類 |
-| 🕒 時刻 | すべて **`TIMESTAMPTZ`**（UTC）。テンプレートは `TIMESTAMP` だが、時刻のずれを防ぐため変える |
-| 🧾 JSON | 形が変わるもの（設定・属性・自動化の定義・ダッシュボード）は **`JSONB`** |
+| 🕒 時刻 | すべて **UTC** で書く（SQLite では ISO 8601 の文字列。並べ替えも比べるのも文字列のままでよい） |
+| 🧾 JSON | 形が変わるもの（設定・属性・自動化の定義・ダッシュボード）は **JSON の文字列**（`CHECK (json_valid(列))` で確かめる） |
 | 🔁 楽観ロック | 画面から編集する表は **`Version INTEGER`**（テンプレート web-api 方式）。API では ETag になる |
 | 🧑‍💻 監査 | `CreatedAt` / `UpdatedAt`（テンプレートの操作コンテキストで設定） |
 | 🗑️ 削除 | 基本は物理削除。**エンティティだけ論理削除**（`DeletedAt`）: 同じ機器が戻ってきたら entity_id と設定を復活させる（HA の deleted entities と同じ） |
 | 🔗 外部キー | 親が消えたら子を「消す（CASCADE）」か「空にする（SET NULL）」かを表ごとに決める |
 | 🔐 秘密 | インテグレーションの秘密は `ConfigEntry.SecretData` に **Data Protection で暗号化**。パスワードは PBKDF2（テンプレート）、トークンは **SHA-256 のハッシュだけ** |
-| 🧬 マイグレーション | `core.SchemaVersion` + 番号付きの SQL ファイル（§6） |
+| 🧬 マイグレーション | `SchemaVersion` の表 + 番号付きの SQL ファイル（§7） |
+
+### 🪶 SQLite での型（論理的な型との対応）
+
+| 表の定義の型 | SQLite（STRICT） | .NET | 備考 |
+|---|---|---|---|
+| `TEXT` | `TEXT` | `string` | |
+| `BIGINT` / `INTEGER` / `SMALLINT` | `INTEGER` | `long` / `int` | |
+| `BIGINT IDENTITY`（連番） | `INTEGER` + `PRIMARY KEY (Id AUTOINCREMENT)` | `long` | テンプレートと同じ書き方 |
+| `BOOLEAN` | `INTEGER`（0 / 1） | `bool` | |
+| `TIMESTAMPTZ` | `TEXT`（UTC の ISO 8601） | `DateTime`（UTC） | |
+| `JSONB` | `TEXT` + `CHECK (json_valid(…))` | `string` → `System.Text.Json` | ✅ P1 で確認 |
+| `UUID` | `TEXT` | `Guid` / `string` | UUIDv7 は .NET の `Guid.CreateVersion7()` で作る |
+| `BYTEA` | `BLOB` | `byte[]` | |
+| `DOUBLE PRECISION` | `REAL` | `double` | |
+| `INET` / `TEXT[]` | `TEXT`（配列は JSON の配列） | `string` | |
 
 ### 🆔 ID の 3 種類
 
 | 種類 | 型 | 使う表 | 例 | 理由 |
 |---|---|---|---|---|
 | 🏷️ slug | `TEXT` | Area / Floor / Label / Category / Script / Helper / Dashboard | `living_room` | 人が読む・URL や YAML に書く（HA と同じ） |
-| 🧬 UUIDv7 | `UUID DEFAULT uuidv7()` | ConfigEntry / Device / Entity / Automation / Scene / Backup | `0192f3a0-7c4e-7b1a-…` | 推測されない・時刻順に並ぶ・.NET でも `Guid.CreateVersion7()` で作れる（`uuidv7()` は PostgreSQL 18 から） |
-| 🔢 連番 | `BIGINT GENERATED ALWAYS AS IDENTITY` | Account / AccessToken / RunTrace / recorder の全表 | `12345` | 行が多い・内部でしか使わない（テンプレートの `BIGSERIAL` と同じ役割） |
+| 🧬 UUIDv7 | `TEXT`（.NET の `Guid.CreateVersion7()` で作る） | ConfigEntry / Device / Entity / Automation / Scene / Backup | `0192f3a0-7c4e-7b1a-…` | 推測されない・時刻順に並ぶ |
+| 🔢 連番 | `INTEGER`（`AUTOINCREMENT`） | Account / AccessToken / RunTrace / recorder の全表 | `12345` | 行が多い・内部でしか使わない（テンプレートと同じ） |
 
 ---
 
 ## 📋 3. テーブル一覧
 
-### 🗂️ 3-1. `core` スキーマ（27）
+### 🗂️ 3-1. `core` = `homemanager.db`（27）
 
 | # | テーブル | 内容 | Phase | HA では |
 |:-:|---|---|:-:|---|
@@ -101,16 +118,16 @@
 | 26 | `Blueprint` | ブループリント | P6 | `blueprints/` |
 | 27 | `Issue` | 修復の要対応事項 | P6 | `repairs.issue_registry` |
 
-### 💾 3-2. `recorder` スキーマ（11・すべて P4）
+### 💾 3-2. `recorder` = 履歴のファイル（11・すべて P4）
 
 | # | テーブル | 内容 | HA では |
 |:-:|---|---|---|
 | 1 | `EntityMeta` | entity_id → 数値 ID | `states_meta` |
 | 2 | `AttributeSet` | 属性 JSON の共有（重複排除） | `state_attributes` |
-| 3 | `StateLog` | 状態の履歴（**日ごとのパーティション**） | `states` |
+| 3 | `StateLog` | 状態の履歴（保持期間を過ぎたら少しずつ消す。日ごとのファイルも検討） | `states` |
 | 4 | `EventType` | イベント種別 → 数値 ID | `event_types` |
 | 5 | `EventPayload` | イベントのデータの共有（重複排除） | `event_data` |
-| 6 | `EventLog` | イベントの履歴（**日ごとのパーティション**） | `events` |
+| 6 | `EventLog` | イベントの履歴（同上） | `events` |
 | 7 | `StatisticMeta` | 統計の対象と単位 | `statistics_meta` |
 | 8 | `StatisticShortTerm` | 5 分ごとの統計 | `statistics_short_term` |
 | 9 | `StatisticHourly` | 1 時間ごとの統計（**消さない**） | `statistics` |
@@ -459,15 +476,15 @@ erDiagram
 **`AttributeSet`**（HA: `state_attributes`）: `Id` BIGINT IDENTITY **PK**・`Hash` BIGINT（正規化した JSON の FNV-1a 64 ビット）・`Attributes` JSONB・索引 `(Hash)`
 → アプリ側で「ハッシュ → Id」をキャッシュ。ハッシュが衝突したら JSON を比べる（HA と同じ）
 
-**`StateLog`**（HA: `states`）— **日ごとのパーティション**
+**`StateLog`**（HA: `states`）
 
 | 列 | 型 | NULL | 説明 |
 |---|---|:-:|---|
-| Id | BIGINT IDENTITY | ✗ | **PK (Id, LastUpdated)**（パーティションのキーを含める必要がある） |
+| Id | BIGINT IDENTITY | ✗ | **PK** |
 | MetadataId | BIGINT | ✗ | FK → EntityMeta |
 | State | TEXT | ○ | 状態の文字列（最大 255） |
 | AttributesId | BIGINT | ○ | FK → AttributeSet |
-| LastUpdated | TIMESTAMPTZ | ✗ | **パーティションのキー** |
+| LastUpdated | TIMESTAMPTZ | ✗ | 記録した時刻（保持期間の判定に使う） |
 | LastChanged | TIMESTAMPTZ | ○ | NULL なら LastUpdated と同じ（**容量の節約**。HA と同じ工夫） |
 | ContextId | UUID | ✗ | 変化の原因（Context） |
 | ContextUserId | BIGINT | ○ | 操作したユーザー（Account.Id） |
@@ -480,7 +497,7 @@ erDiagram
 
 **`EventPayload`**（HA: `event_data`）: `Id` BIGINT IDENTITY **PK**・`Hash` BIGINT・`Data` JSONB・索引 `(Hash)`
 
-**`EventLog`**（HA: `events`）— **日ごとのパーティション**: `Id` BIGINT IDENTITY・`EventTypeId` INTEGER（FK）・`PayloadId` BIGINT（FK・NULL 可）・`TimeFired` TIMESTAMPTZ（**パーティションのキー**）・`ContextId` UUID・`ContextUserId` BIGINT・`ContextParentId` UUID・`Origin` SMALLINT・**PK (Id, TimeFired)**・索引 `(EventTypeId, TimeFired)` / `(ContextId)`
+**`EventLog`**（HA: `events`）: `Id` BIGINT IDENTITY **PK**・`EventTypeId` INTEGER（FK）・`PayloadId` BIGINT（FK・NULL 可）・`TimeFired` TIMESTAMPTZ・`ContextId` UUID・`ContextUserId` BIGINT・`ContextParentId` UUID・`Origin` SMALLINT・索引 `(EventTypeId, TimeFired)` / `(TimeFired)` / `(ContextId)`
 
 **`StatisticMeta`**（HA: `statistics_meta`）: `Id` BIGINT IDENTITY **PK**・`StatisticId` TEXT **UNIQUE**（`sensor.house_power` / 外部の値は `external:電気料金`）・`Source` TEXT（`recorder`）・`Name` TEXT・`UnitOfMeasurement` TEXT・`HasMean` BOOLEAN・`HasSum` BOOLEAN
 
@@ -499,54 +516,32 @@ erDiagram
 
 **`RecorderRun`**（HA: `recorder_runs`）: `Id` IDENTITY **PK**・`StartedAt`・`EndedAt`・`ClosedIncorrectly` BOOLEAN → 停止していた期間を履歴で「不明」と表示するため
 
-### ⏱️ 6-3. パーティションと保持期間
+### ⏱️ 6-3. 保持期間（古い履歴を消す）
 
-```mermaid
-flowchart LR
-    subgraph SL["📜 recorder.StateLog（親テーブル）"]
-        direction LR
-        p1["StateLog_20261021<br/>🗑️ 保持期間切れ → DROP"] ~~~ p2["…"] ~~~ p3["StateLog_20261031<br/>✍️ 今日"] ~~~ p4["StateLog_20261101<br/>🆕 先に作っておく"]
-    end
-```
+SQLite にはパーティションが無いので、HA と同じく**少しずつ消す**。
 
 `RetentionWorker`（1 日 1 回）の仕事:
 
-1. 🆕 明日から数日先までのパーティションを作っておく
-2. 🗑️ `keepDays`（既定 10 日）を過ぎた日のパーティションを `DETACH` → `DROP`（**DELETE より桁違いに速く、VACUUM も要らない**）
-3. 🧹 `StatisticShortTerm` の古い行を DELETE（`StatisticHourly` は消さない）
-4. 🧽 どこからも参照されなくなった `AttributeSet` / `EventPayload` / `EntityMeta` の行を消す
-
-- 🕛 パーティションの境界は UTC の 0 時（日本時間の 9 時）
-- 🛟 想定外の時刻の行を受け止める `DEFAULT` パーティションも作る
+1. 🗑️ `keepDays`（既定 10 日）を過ぎた `StateLog` / `EventLog` を **1 回 1 万行ずつ** DELETE（長いトランザクションで書き込みを止めない。HA の purge と同じ）
+2. 🧹 `StatisticShortTerm` の古い行を DELETE（`StatisticHourly` は消さない）
+3. 🧽 どこからも参照されなくなった `AttributeSet` / `EventPayload` / `EntityMeta` の行を消す
+4. 📦 消した分の空きを `PRAGMA incremental_vacuum` で少しずつファイルから返す（`auto_vacuum = INCREMENTAL`）。月 1 回くらい `VACUUM`（HA の `auto_repack`）
 
 ```sql
--- 親テーブル（日ごとに分割）
-CREATE TABLE IF NOT EXISTS recorder.StateLog (
-    Id               BIGINT       GENERATED ALWAYS AS IDENTITY,
-    MetadataId       BIGINT       NOT NULL REFERENCES recorder.EntityMeta (Id),
-    State            TEXT,
-    AttributesId     BIGINT       REFERENCES recorder.AttributeSet (Id),
-    LastUpdated      TIMESTAMPTZ  NOT NULL,
-    LastChanged      TIMESTAMPTZ,
-    ContextId        UUID         NOT NULL,
-    ContextUserId    BIGINT,
-    ContextParentId  UUID,
-    Origin           SMALLINT     NOT NULL DEFAULT 0,
-    PRIMARY KEY (Id, LastUpdated)
-) PARTITION BY RANGE (LastUpdated);
+-- 保持期間を過ぎた行を少しずつ消す（消す行が無くなるまで RetentionWorker が繰り返す）
+DELETE FROM StateLog
+WHERE Id IN (
+    SELECT Id FROM StateLog
+    WHERE LastUpdated < /*@ purgeBefore */'2026-10-21T00:00:00Z'
+    ORDER BY LastUpdated
+    LIMIT 10000
+);
 
-CREATE INDEX IF NOT EXISTS IX_StateLog_MetadataId_LastUpdated ON recorder.StateLog (MetadataId, LastUpdated);
-CREATE INDEX IF NOT EXISTS IX_StateLog_AttributesId ON recorder.StateLog (AttributesId);
-
--- 日ごとのパーティション（RetentionWorker が先回りして作る）
-CREATE TABLE IF NOT EXISTS recorder.StateLog_20261101
-    PARTITION OF recorder.StateLog
-    FOR VALUES FROM ('2026-11-01 00:00:00+00') TO ('2026-11-02 00:00:00+00');
-
--- 保持期間を過ぎた日を消す
-ALTER TABLE recorder.StateLog DETACH PARTITION recorder.StateLog_20261021;
-DROP TABLE recorder.StateLog_20261021;
+-- 消した分の空きを少しずつファイルから返す
+PRAGMA incremental_vacuum(1000);
 ```
+
+> 📅 **日ごとのファイルに分ける案**（今後の検討事項）: `recorder/2026-11-02.db` のように 1 日 1 ファイルにすれば、古い日は**ファイルを消すだけ**（PostgreSQL のパーティションの DROP と同じ）。比べ方は §6-7 と [12 §5](12-db-review.md)。
 
 ### ✍️ 6-4. 書き込みの流れ
 
@@ -554,7 +549,7 @@ DROP TABLE recorder.StateLog_20261021;
 sequenceDiagram
     participant BUS as 📣 EventBus
     participant RW as 💾 RecorderWorker
-    participant DB as 🐘 PostgreSQL
+    participant DB as 🪶 SQLite（履歴のファイル）
     BUS->>RW: StateChanged（Channel に積む）
     BUS->>RW: StateChanged …
     Note over RW: 5 秒ごと（または 500 件）にまとめる
@@ -572,23 +567,24 @@ sequenceDiagram
 - 🧮 例（簡易版の単純平均。パラメーターの書き方は実装時に Smart.Data.Accessor の 2-way SQL に合わせる）:
 
 ```sql
-INSERT INTO recorder.StatisticShortTerm (MetadataId, PeriodStart, Mean, Min, Max, CreatedAt)
+-- 区間の終わり (@periodEnd) と今の時刻 (@now) は .NET で計算して渡す
+INSERT INTO StatisticShortTerm (MetadataId, PeriodStart, Mean, Min, Max, CreatedAt)
 SELECT
     sm.Id,
     @periodStart,
-    AVG(s.State::DOUBLE PRECISION),
-    MIN(s.State::DOUBLE PRECISION),
-    MAX(s.State::DOUBLE PRECISION),
-    NOW()
+    AVG(CAST(s.State AS REAL)),
+    MIN(CAST(s.State AS REAL)),
+    MAX(CAST(s.State AS REAL)),
+    @now
 FROM
-    recorder.StateLog s
-    INNER JOIN recorder.EntityMeta em ON em.Id = s.MetadataId
-    INNER JOIN recorder.StatisticMeta sm ON sm.StatisticId = em.EntityId
+    StateLog s
+    INNER JOIN EntityMeta em ON em.Id = s.MetadataId
+    INNER JOIN StatisticMeta sm ON sm.StatisticId = em.EntityId
 WHERE
     s.LastUpdated >= @periodStart
-    AND s.LastUpdated < @periodStart + INTERVAL '5 minutes'
-    AND pg_input_is_valid(s.State, 'double precision')
-    AND sm.HasMean
+    AND s.LastUpdated < @periodEnd
+    AND s.State NOT IN ('unknown', 'unavailable')
+    AND sm.HasMean = 1
 GROUP BY
     sm.Id
 ON CONFLICT (MetadataId, PeriodStart) DO NOTHING;
@@ -606,15 +602,17 @@ ON CONFLICT (MetadataId, PeriodStart) DO NOTHING;
 
 → Raspberry Pi でも **SSD** なら十分。頻繁に値が変わるセンサー（電力など）は、記録の除外や間引きで調整する。
 
-### 🚀 6-7. TimescaleDB を使う場合（発展）
+### 📅 6-7. 日ごとのファイルに分ける場合（今後の検討事項）
 
-| 自前で作る場合 | TimescaleDB |
-|---|---|
-| 日ごとのパーティション + `RetentionWorker` | ハイパーテーブル + 保持ポリシー（`add_retention_policy`） |
-| `StatisticsWorker` の集計 SQL | 連続集計（continuous aggregate） |
-| — | 古い区間の圧縮 |
+| | 1 ファイル + 少しずつ DELETE（§6-3） | 日ごとのファイル |
+|---|---|---|
+| 🗑️ 古い日を消す | DELETE を繰り返す + VACUUM | **ファイルを消すだけ**（一瞬・VACUUM 不要） |
+| 🔍 何日もまたがる検索 | そのまま | `ATTACH` でつなぐ（同時につなげる数に上限） |
+| 🏷️ entity_id・属性の共有表 | 同じファイル | どのファイルに置くかを決める（共通のファイル + 日ごとのファイル など） |
+| 🕛 0 時をまたぐ書き込み | 気にしない | 書き込み先の切り替えが要る |
+| 📦 古い日を残す | 別に書き出す | ファイルを別の場所に移すだけ |
 
-→ まず自前で作って**仕組みを学び**、慣れたら TimescaleDB に置き換えて比べる。
+→ P4 で履歴を作るときに両方を試して決める（テンプレートの maui-server も端末ごとに時系列の SQLite を分けている）。
 
 ---
 
@@ -627,7 +625,7 @@ Assets/Data/Migrations/
 ├── 0001_core_initial.sql       ← P1: Setting / Account（SchemaVersion は DatabaseService が起動時に作る）
 ├── 0002_core_registry.sql      ← P2: ConfigEntry / Floor / Area / Label / Device* / Entity*
 ├── 0003_core_automation.sql    ← P3: Automation / Script / Scene / Helper / RunTrace / ConfigReference / RestoreState / Notification
-├── 0004_recorder.sql           ← P4: recorder スキーマ一式
+├── 0004_recorder.sql           ← P4: 履歴のファイル一式（別のファイルにするので、並びを分けるかは P4 で決める）
 ├── 0005_core_dashboard.sql     ← P4: Dashboard
 ├── 0006_core_tokens.sql        ← P5: AccessToken / Backup
 └── …
@@ -635,15 +633,17 @@ Assets/Data/Migrations/
 
 ```mermaid
 flowchart LR
-    A["🚀 起動"] --> B["🔒 アドバイザリーロックを取る<br/>（二重起動の対策）"]
-    B --> C["📋 SchemaVersion を読む<br/>（無ければ core スキーマごと作る）"]
+    A["🚀 起動"] --> B["🪶 WAL にする<br/>（DB ファイルに残る設定）"]
+    B --> C["📋 SchemaVersion を読む<br/>（無ければ作る）"]
     C --> D{"未適用の<br/>ファイルがある？"}
     D -->|"ある"| E["🧾 1 ファイル = 1 トランザクションで実行<br/>→ SchemaVersion に記録"]
     E --> D
     D -->|"ない"| F["✅ 起動を続ける"]
 ```
 
-- ↩️ PostgreSQL は **DDL もトランザクションで巻き戻せる** → 途中で失敗しても中途半端なスキーマが残らない
+- ↩️ SQLite も **DDL をトランザクションで巻き戻せる** → 途中で失敗しても中途半端なスキーマが残らない
+- 🔓 アプリは 1 プロセスで DB ファイルを持つので、マイグレーションのロックは取らない（PostgreSQL のときはアドバイザリーロックを取っていた）
+- 📁 DB ファイルのフォルダーは起動時に作る（SQLite はフォルダーを作らない）
 - 🔏 適用済みのファイルが書き換えられていたら `Checksum` で検出して起動を止める
 - 🌱 初期データ（初期ユーザー admin・`core.config` の既定値）は SQL ではなく**起動時の初期化処理**で入れる（テンプレートの `InitializeApplicationAsync` に倣う）
 
@@ -653,8 +653,8 @@ flowchart LR
 
 | 対象 | 方法 | 頻度 |
 |---|---|---|
-| 🗂️ `core` スキーマ | `pg_dump --schema=core`（小さい） | 毎日 + 設定を大きく変える前 |
-| 📜 `recorder` スキーマ | 任意（消えても困らない。統計だけ残すなら `StatisticMeta` と `StatisticHourly`） | 週 1 など |
+| 🗂️ `homemanager.db` | ファイルのコピー。動かしたままなら `VACUUM INTO` か `SqliteConnection.BackupDatabase`（小さい） | 毎日 + 設定を大きく変える前 |
+| 📜 履歴のファイル | 任意（消えても困らない。統計だけ残すなら `StatisticMeta` と `StatisticHourly`） | 週 1 など |
 | 🔑 Data Protection の鍵（`/data/keys`） | ファイルのコピー（**無いと `SecretData` を復号できない**） | `core` と必ず一緒に |
 
 → `IBackupService`（P5）がこれらを 1 つの `tar.gz` にまとめる
@@ -685,13 +685,13 @@ flowchart LR
 
 ---
 
-## ⚠️ 10. 検討事項（P0 で確かめること）
+## ⚠️ 10. 検討事項
 
 | 項目 | 内容 | 方針 |
 |---|---|---|
-| 🧮 Smart.Data.Accessor と PostgreSQL | 2-way SQL は方言に依存しない作り。web-fullstack に PostgreSQL での実績がある | fullstack の Accessor と方言の判定（`PostgresException` の UniqueViolation）を流用 |
-| 📦 JSONB・配列・UUID・INET の受け渡し | Accessor で `JSONB` / `TEXT[]` / `UUID` / `INET` をどの .NET 型で受けるか | まず JSONB は `string` で受けて `System.Text.Json` で変換。✅ P1 で確認（読むときは `string`、書くときは SQL で `CAST(… AS JSONB)`。PostgreSQL 18 の結合テスト） |
-| 🏷️ 引用符なしの PascalCase | PostgreSQL の中では小文字になる（`CreatedAt` → `createdat`） | テンプレートと同じく引用符なしで統一。結果の列とプロパティの対応が大文字小文字を区別しないことを P0 で確かめる |
-| ✍️ 履歴の書き込み性能 | 1 行ずつの INSERT は遅い | 複数行の `VALUES` でまとめて INSERT。さらに必要なら Npgsql のバイナリ COPY |
+| 🧮 Smart.Data.Accessor と SQLite | テンプレートはすべて SQLite + Smart.Data.Accessor | ✅ P1 で確認（`STRICT` の表・`json_valid`・`RETURNING`・UPSERT・真偽値と時刻の読み書き。結合テスト） |
+| 📦 JSON・UUID の受け渡し | Accessor で JSON / UUID をどの .NET 型で受けるか | JSON は `string` で受けて `System.Text.Json` で変換（✅ P1 で確認）。UUID は P2 で確かめる |
+| ✍️ 履歴の書き込み性能 | 1 行ずつの INSERT は遅い。SQLite は書くのが 1 本ずつ | 5 秒ごとに 1 トランザクションでまとめて INSERT（HA の `commit_interval`）。必要なら `synchronous = NORMAL` |
+| 📅 履歴のファイルの分け方 | 1 ファイル + 少しずつ DELETE か、日ごとのファイルか | P4 で比べる（§6-7） |
 | 🔗 外部キーの負荷 | 大量に INSERT する表の外部キーは検査の負荷になる | まず付ける（整合性を学ぶ）。重ければ `StateLog` の外部キーだけ外す |
 | 🧹 共有行の掃除 | `AttributeSet` などは参照が無くなっても残る | `RetentionWorker` で参照されない行を消す（HA の purge と同じ） |

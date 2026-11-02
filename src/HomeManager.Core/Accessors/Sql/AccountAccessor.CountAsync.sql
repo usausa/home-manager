@@ -1,4 +1,4 @@
 SELECT
     COUNT(*)
 FROM
-    core.Account
+    Account

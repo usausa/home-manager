@@ -1,5 +1,5 @@
 INSERT INTO
-    core.Setting (Key, Value, UpdatedAt)
+    Setting (Key, Value, UpdatedAt)
 VALUES
-    (/*@ key */'', CAST(/*@ value */'{}' AS JSONB), /*@ updatedAt */'')
+    (/*@ key */'', /*@ value */'{}', /*@ updatedAt */'')
 ON CONFLICT (Key) DO NOTHING

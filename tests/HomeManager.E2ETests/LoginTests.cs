@@ -7,12 +7,11 @@ using Microsoft.Playwright;
 public sealed class LoginTests : E2ETestBase
 {
     // 初回は初期パスワードの変更と家の情報の確認を済ませてから概要に進む
-    [ContainerFact]
+    [Fact]
     public async Task FirstLoginGoesThroughOnboarding()
     {
         // Given
         await using var factory = new E2EApplicationFactory();
-        await factory.InitializeAsync();
         factory.UseKestrel(0);
         factory.StartServer();
 
@@ -38,12 +37,11 @@ public sealed class LoginTests : E2ETestBase
         await Expect(Page.GetByText("HomeManager")).ToBeVisibleAsync();
     }
 
-    [ContainerFact]
+    [Fact]
     public async Task LoginWithWrongPasswordShowsError()
     {
         // Given
         await using var factory = new E2EApplicationFactory();
-        await factory.InitializeAsync();
         factory.UseKestrel(0);
         factory.StartServer();
 

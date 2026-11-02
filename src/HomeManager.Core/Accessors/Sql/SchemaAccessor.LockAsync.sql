@@ -1,2 +1,0 @@
-SELECT
-    pg_advisory_lock(/*@ key */0)

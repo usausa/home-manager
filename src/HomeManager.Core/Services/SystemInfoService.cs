@@ -48,14 +48,15 @@ public sealed class SystemInfoService : ISystemInfoService
             serviceRegistry.ListServices().Count,
             integrationManager.ListIntegrations());
 
-    // DBにつながらなくても画面は出す
+    // DBを読めなくても画面は出す
     private async ValueTask<DatabaseInfo?> QueryDatabaseAsync(CancellationToken cancellationToken)
     {
         try
         {
-            var serverVersion = await systemAccessor.QueryServerVersionAsync(cancellationToken);
+            var version = await systemAccessor.QueryVersionAsync(cancellationToken);
+            var file = await systemAccessor.QueryFileAsync(cancellationToken);
             var size = await systemAccessor.QueryDatabaseSizeAsync(cancellationToken);
-            return new DatabaseInfo(serverVersion, size);
+            return new DatabaseInfo(version, file, size);
         }
         catch (DbException ex)
         {
