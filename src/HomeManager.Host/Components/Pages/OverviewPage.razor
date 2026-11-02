@@ -4,7 +4,8 @@
 <PageTitle>概要</PageTitle>
 
 <div class="page-header">
-    <MudText Typo="Typo.h4">🏠 概要</MudText>
+    @* 見出しは全体設定の家の名前 (HA の概要と同じ) *@
+    <MudText Typo="Typo.h4">🏠 @CoreConfig.Config.Name</MudText>
     <MudSpacer />
     <MudTextField T="string"
                   Value="search"

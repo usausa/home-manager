@@ -1,0 +1,79 @@
+<MudForm @ref="form" Spacing="2">
+    <MudTextField T="string"
+                  @bind-Value="Model.Name"
+                  Label="家の名前"
+                  HelperText="概要の見出しに出ます"
+                  MaxLength="@Length.Name"
+                  Validation="@(new Func<string?, string?>(CoreConfigRules.ValidateName))"
+                  Variant="Variant.Outlined"
+                  Margin="Margin.Dense" />
+    <MudGrid Spacing="2">
+        <MudItem xs="12" sm="4">
+            <MudNumericField T="double"
+                             @bind-Value="Model.Latitude"
+                             Label="緯度"
+                             Min="CoreConfigRules.MinLatitude"
+                             Max="CoreConfigRules.MaxLatitude"
+                             Step="0.0001"
+                             Validation="@(new Func<double, string?>(CoreConfigRules.ValidateLatitude))"
+                             Variant="Variant.Outlined"
+                             Margin="Margin.Dense" />
+        </MudItem>
+        <MudItem xs="12" sm="4">
+            <MudNumericField T="double"
+                             @bind-Value="Model.Longitude"
+                             Label="経度"
+                             Min="CoreConfigRules.MinLongitude"
+                             Max="CoreConfigRules.MaxLongitude"
+                             Step="0.0001"
+                             Validation="@(new Func<double, string?>(CoreConfigRules.ValidateLongitude))"
+                             Variant="Variant.Outlined"
+                             Margin="Margin.Dense" />
+        </MudItem>
+        <MudItem xs="12" sm="4">
+            <MudNumericField T="int"
+                             @bind-Value="Model.Elevation"
+                             Label="標高（m）"
+                             Min="CoreConfigRules.MinElevation"
+                             Max="CoreConfigRules.MaxElevation"
+                             Validation="@(new Func<int, string?>(CoreConfigRules.ValidateElevation))"
+                             Variant="Variant.Outlined"
+                             Margin="Margin.Dense" />
+        </MudItem>
+    </MudGrid>
+    <MudAutocomplete T="string"
+                     @bind-Value="Model.TimeZone"
+                     Label="タイムゾーン"
+                     HelperText="時刻の表示に使います（例: Asia/Tokyo）"
+                     SearchFunc="SearchTimeZoneAsync"
+                     MaxItems="MaxTimeZoneItems"
+                     Validation="@(new Func<string?, string?>(CoreConfigRules.ValidateTimeZone))"
+                     Variant="Variant.Outlined"
+                     Margin="Margin.Dense" />
+    <MudSelect T="string" @bind-Value="Model.UnitSystem" Label="単位系" Variant="Variant.Outlined" Margin="Margin.Dense">
+        <MudSelectItem T="string" Value="UnitSystems.Metric">メートル法（℃・m・kg）</MudSelectItem>
+        <MudSelectItem T="string" Value="UnitSystems.UsCustomary">ヤード・ポンド法（℉・ft・lb）</MudSelectItem>
+    </MudSelect>
+    <MudGrid Spacing="2">
+        <MudItem xs="12" sm="6">
+            <MudTextField T="string"
+                          @bind-Value="Model.Currency"
+                          Label="通貨"
+                          HelperText="ISO 4217 の 3 文字（例: JPY）"
+                          MaxLength="3"
+                          Validation="@(new Func<string?, string?>(ValidateCurrency))"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense" />
+        </MudItem>
+        <MudItem xs="12" sm="6">
+            <MudTextField T="string"
+                          @bind-Value="Model.Country"
+                          Label="国"
+                          HelperText="ISO 3166-1 の 2 文字（例: JP）"
+                          MaxLength="2"
+                          Validation="@(new Func<string?, string?>(ValidateCountry))"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense" />
+        </MudItem>
+    </MudGrid>
+</MudForm>

@@ -9,4 +9,9 @@ internal static partial class Log
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Event handler exception. eventType=[{eventType}]")]
     public static partial void ErrorEventHandlerException(this ILogger logger, string eventType, Exception ex);
+
+    // SystemInfoService
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Database information query failed.")]
+    public static partial void WarnDatabaseInfoFailed(this ILogger logger, Exception ex);
 }

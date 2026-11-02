@@ -23,6 +23,8 @@ public static class EventTypes
 
     public const string HomeManagerStop = "homemanager_stop";
 
+    public const string CoreConfigUpdated = "core_config_updated";
+
     // 画面で選べる既知の種別
     public static IReadOnlyList<string> Known { get; } =
     [
@@ -34,6 +36,7 @@ public static class EventTypes
         ComponentLoaded,
         HomeManagerStart,
         HomeManagerStarted,
-        HomeManagerStop
+        HomeManagerStop,
+        CoreConfigUpdated
     ];
 }

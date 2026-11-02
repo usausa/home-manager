@@ -28,7 +28,7 @@ public static class AuthEndpoints
 
     private static async ValueTask<IResult> HandleLoginAsync(
         HttpContext context,
-        AccountService accountService,
+        IAccountService accountService,
         [FromForm] string? name,
         [FromForm] string? password,
         [FromForm] string? returnUrl)

@@ -8,7 +8,7 @@ using HomeManager.Host.Components.Layout;
 public sealed class NavMenuTests : MudBlazorTestBase
 {
     [Fact]
-    public void AdministratorSeesDeveloperTools()
+    public void AdministratorSeesDeveloperToolsAndSettings()
     {
         // Arrange
         var authorization = AddAuthorization();
@@ -20,8 +20,9 @@ public sealed class NavMenuTests : MudBlazorTestBase
 
         // Assert
         var links = cut.FindAll("a");
-        Assert.Equal(4, links.Count);
+        Assert.Equal(5, links.Count);
         Assert.Contains(links, static x => x.GetAttribute("href") == "developer-tools/state");
+        Assert.Contains(links, static x => x.GetAttribute("href") == "config");
     }
 
     [Fact]

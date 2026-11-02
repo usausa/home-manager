@@ -7,6 +7,10 @@ public sealed class IntegrationWorker : BackgroundService
 
     private readonly IntegrationManager manager;
 
+    private readonly IServiceRegistry registry;
+
+    private readonly ICoreConfigService coreConfig;
+
     private readonly IEventBus bus;
 
     private readonly TimeProvider timeProvider;
@@ -14,11 +18,15 @@ public sealed class IntegrationWorker : BackgroundService
     public IntegrationWorker(
         ILogger<IntegrationWorker> log,
         IntegrationManager manager,
+        IServiceRegistry registry,
+        ICoreConfigService coreConfig,
         IEventBus bus,
         TimeProvider timeProvider)
     {
         this.log = log;
         this.manager = manager;
+        this.registry = registry;
+        this.coreConfig = coreConfig;
         this.bus = bus;
         this.timeProvider = timeProvider;
     }
@@ -29,6 +37,8 @@ public sealed class IntegrationWorker : BackgroundService
         try
         {
             bus.Publish(new SystemEvent(EventTypes.HomeManagerStart, EventContext.Create(), timeProvider.GetUtcNow()));
+            // コアのサービス (homemanager.reload_core_config) はインテグレーションより先に用意する
+            CoreConfigServices.Register(registry, coreConfig);
             await manager.StartAsync(stoppingToken);
             bus.Publish(new SystemEvent(EventTypes.HomeManagerStarted, EventContext.Create(), timeProvider.GetUtcNow()));
 

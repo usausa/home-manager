@@ -42,6 +42,59 @@ html, body {
     text-align: right;
 }
 
+/* App bar */
+.mud-button.appbar-user {
+    text-transform: none;
+}
+
+/* Onboarding (SCR-002) */
+.onboarding-card {
+    max-width: 640px;
+}
+
+.onboarding-steps {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+/* Settings (SCR-003 / SCR-301 / SCR-361 / SCR-362) */
+.settings-section {
+    max-width: 720px;
+}
+
+.settings-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.config-menu {
+    display: block;
+    height: 100%;
+    color: inherit;
+    text-decoration: none;
+}
+
+.config-menu-body {
+    height: 100%;
+    transition: background-color 0.2s;
+}
+
+.config-menu:hover .config-menu-body {
+    background-color: var(--mud-palette-action-default-hover);
+}
+
+.info-table th {
+    width: 120px;
+    text-align: left;
+    white-space: nowrap;
+}
+
+.info-table td {
+    word-break: break-all;
+}
+
 /* Overview */
 .overview-search {
     max-width: 320px;

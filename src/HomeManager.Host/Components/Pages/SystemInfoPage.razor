@@ -1,0 +1,113 @@
+@page "/config/info"
+@attribute [Authorize(Policy = Policies.Administrator)]
+
+<PageTitle>システム情報</PageTitle>
+
+<MudLink Href="config" Typo="Typo.body2">← 設定</MudLink>
+<div class="page-header">
+    <MudText Typo="Typo.h4">ℹ️ システム情報</MudText>
+    <MudSpacer />
+    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Refresh" Disabled="busy" OnClick="OnRefreshAsync">更新</MudButton>
+</div>
+
+<Condition Value="Loaded">
+    <MudGrid Spacing="3">
+        <MudItem xs="12" md="6">
+            <MudPaper Outlined="true" Class="pa-4">
+                <MudText Typo="Typo.h6" Class="mb-2">🖥️ アプリ</MudText>
+                <MudSimpleTable Dense="true" Class="info-table">
+                    <tbody>
+                        <tr><th>バージョン</th><td>@VersionText</td></tr>
+                        <tr><th>.NET</th><td>@Info.Framework</td></tr>
+                        <tr><th>OS</th><td>@Info.OperatingSystem</td></tr>
+                        <tr><th>起動</th><td>@StartedText</td></tr>
+                        <tr><th>稼働時間</th><td>@UptimeText</td></tr>
+                        <tr><th>エンティティ</th><td>@Info.EntityCount 件</td></tr>
+                        <tr><th>サービス</th><td>@Info.ServiceCount 件</td></tr>
+                    </tbody>
+                </MudSimpleTable>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" md="6">
+            <MudPaper Outlined="true" Class="pa-4">
+                <MudText Typo="Typo.h6" Class="mb-2">🗄️ データベース</MudText>
+                <Condition Value="!HasDatabase">
+                    <MudAlert Severity="Severity.Error">データベースに接続できません。</MudAlert>
+                </Condition>
+                <Condition Value="HasDatabase">
+                    <MudSimpleTable Dense="true" Class="info-table">
+                        <tbody>
+                            <tr><th>種類</th><td>PostgreSQL @Info.Database?.ServerVersion</td></tr>
+                            <tr><th>大きさ</th><td>@DatabaseSizeText</td></tr>
+                        </tbody>
+                    </MudSimpleTable>
+                </Condition>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12">
+            <MudPaper Outlined="true" Class="pa-4">
+                <MudText Typo="Typo.h6" Class="mb-2">🧩 インテグレーション（@Info.Integrations.Count）</MudText>
+                <MudSimpleTable Dense="true" Hover="true">
+                    <thead>
+                        <tr>
+                            <th>名前</th>
+                            <th>種類</th>
+                            <th>状態</th>
+                            <th>エンティティ</th>
+                            <th>読み込み</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <ListItem Items="Info.Integrations" Context="integration">
+                            <ItemTemplate>
+                                <tr @key="integration.Domain">
+                                    <td>
+                                        @integration.Name
+                                        <MudText Typo="Typo.caption" Class="d-block mud-text-secondary">@integration.Domain</MudText>
+                                    </td>
+                                    <td>@integration.IotClass</td>
+                                    <td>
+                                        <MudChip T="string" Size="Size.Small" Color="GetStatusColor(integration.Status)">@GetStatusText(integration.Status)</MudChip>
+                                        <Condition Value="integration.Error is not null">
+                                            <MudText Typo="Typo.caption" Class="d-block mud-error-text">@integration.Error</MudText>
+                                        </Condition>
+                                    </td>
+                                    <td>@integration.EntityCount</td>
+                                    <td>@FormatTime(integration.LoadedAt)</td>
+                                </tr>
+                            </ItemTemplate>
+                        </ListItem>
+                    </tbody>
+                </MudSimpleTable>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12">
+            <MudPaper Outlined="true" Class="pa-4">
+                <MudText Typo="Typo.h6" Class="mb-2">🔌 接続中の回線（@circuits.Count）</MudText>
+                <MudText Typo="Typo.body2" Class="mb-2 mud-text-secondary">画面を開いているブラウザのタブごとに 1 本です。</MudText>
+                <MudSimpleTable Dense="true" Hover="true">
+                    <thead>
+                        <tr>
+                            <th>ユーザー</th>
+                            <th>開始</th>
+                            <th>状態</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <ListItem Items="circuits" Context="circuit">
+                            <ItemTemplate>
+                                <tr @key="circuit.Id">
+                                    <td>@(circuit.User ?? "（不明）")</td>
+                                    <td>@FormatTime(circuit.OpenedAt)</td>
+                                    <td>
+                                        <MudChip T="string" Size="Size.Small" Color="circuit.Connected ? Color.Success : Color.Warning">@(circuit.Connected ? "接続中" : "再接続待ち")</MudChip>
+                                    </td>
+                                </tr>
+                            </ItemTemplate>
+                        </ListItem>
+                    </tbody>
+                </MudSimpleTable>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+</Condition>

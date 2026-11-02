@@ -188,6 +188,9 @@ erDiagram
 { "name": "我が家", "latitude": 35.68, "longitude": 139.76, "elevation": 40,
   "timeZone": "Asia/Tokyo", "unitSystem": "metric", "currency": "JPY", "country": "JP" }
 
+// Key = "core.onboarding"（SCR-002 初回セットアップ。済んだ手順。初期パスワードの変更はユーザーごとの MustChangePassword）
+{ "done": ["core_config"] }
+
 // Key = "recorder"（P4）
 { "keepDays": 10, "commitIntervalSeconds": 5,
   "exclude": { "domains": ["button"], "entityGlobs": ["sensor.*_rssi"], "eventTypes": ["call_service"] } }
@@ -206,7 +209,7 @@ erDiagram
 | Role | TEXT | ✗ | `Administrator`（P1）/ `User`・`ReadOnly`（P5） |
 | IsEnabled | BOOLEAN | ✗ | 🆕 無効化 |
 | MustChangePassword | BOOLEAN | ✗ | 🆕 初期ユーザーは true → 初回セットアップ（SCR-002）へ |
-| Preferences | JSONB | ✗ | 🆕 テーマ・既定のダッシュボード |
+| Preferences | JSONB | ✗ | 🆕 表示の設定。P1 はテーマ `{ "theme": "auto" }`（light・dark・auto）、P4 で既定のダッシュボード |
 | LastLoginAt | TIMESTAMPTZ | ○ | 🆕 |
 | CreatedAt / UpdatedAt | TIMESTAMPTZ | ✗ | |
 | Version | INTEGER | ✗ | 🆕 楽観ロック |
@@ -687,7 +690,7 @@ flowchart LR
 | 項目 | 内容 | 方針 |
 |---|---|---|
 | 🧮 Smart.Data.Accessor と PostgreSQL | 2-way SQL は方言に依存しない作り。web-fullstack に PostgreSQL での実績がある | fullstack の Accessor と方言の判定（`PostgresException` の UniqueViolation）を流用 |
-| 📦 JSONB・配列・UUID・INET の受け渡し | Accessor で `JSONB` / `TEXT[]` / `UUID` / `INET` をどの .NET 型で受けるか | まず JSONB は `string` で受けて `System.Text.Json` で変換。P0 で動作を確かめる |
+| 📦 JSONB・配列・UUID・INET の受け渡し | Accessor で `JSONB` / `TEXT[]` / `UUID` / `INET` をどの .NET 型で受けるか | まず JSONB は `string` で受けて `System.Text.Json` で変換。✅ P1 で確認（読むときは `string`、書くときは SQL で `CAST(… AS JSONB)`。PostgreSQL 18 の結合テスト） |
 | 🏷️ 引用符なしの PascalCase | PostgreSQL の中では小文字になる（`CreatedAt` → `createdat`） | テンプレートと同じく引用符なしで統一。結果の列とプロパティの対応が大文字小文字を区別しないことを P0 で確かめる |
 | ✍️ 履歴の書き込み性能 | 1 行ずつの INSERT は遅い | 複数行の `VALUES` でまとめて INSERT。さらに必要なら Npgsql のバイナリ COPY |
 | 🔗 外部キーの負荷 | 大量に INSERT する表の外部キーは検査の負荷になる | まず付ける（整合性を学ぶ）。重ければ `StateLog` の外部キーだけ外す |

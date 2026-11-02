@@ -41,6 +41,9 @@ public sealed partial class EntityDetailDialog
     public required TimeProvider TimeProvider { get; set; }
 
     [Inject]
+    public required ICoreConfigService CoreConfig { get; set; }
+
+    [Inject]
     public required EntityOperations Operations { get; set; }
 
     private bool Found => state is not null;
@@ -53,7 +56,7 @@ public sealed partial class EntityDetailDialog
 
     private Color IconColor => state is null ? Color.Default : EntityFormatter.GetColor(state);
 
-    private string StateText => state is null ? string.Empty : EntityFormatter.FormatState(state);
+    private string StateText => state is null ? string.Empty : EntityFormatter.FormatState(state, CoreConfig.TimeZone);
 
     private bool Available => (state is not null) && EntityFormatter.IsAvailable(state);
 
@@ -179,5 +182,5 @@ public sealed partial class EntityDetailDialog
     //--------------------------------------------------------------------------------
 
     private string FormatTime(DateTimeOffset value) =>
-        $"{EntityFormatter.FormatTime(value)}（{EntityFormatter.FormatRelative(value, TimeProvider.GetUtcNow())}）";
+        $"{EntityFormatter.FormatTime(value, CoreConfig.TimeZone)}（{EntityFormatter.FormatRelative(value, TimeProvider.GetUtcNow())}）";
 }

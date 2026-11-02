@@ -1,0 +1,16 @@
+@page "/config/general"
+@attribute [Authorize(Policy = Policies.Administrator)]
+
+<PageTitle>全体設定</PageTitle>
+
+<MudLink Href="config" Typo="Typo.body2">← 設定</MudLink>
+<MudText Typo="Typo.h4" Class="mb-4">🌍 全体設定</MudText>
+
+<MudPaper Outlined="true" Class="pa-4 settings-section">
+    <CoreConfigForm @ref="form" Model="model" />
+    <div class="settings-actions mt-4">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Save" Disabled="busy" OnClick="OnSaveAsync">保存</MudButton>
+        <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.Undo" Disabled="busy" OnClick="OnResetClick">元に戻す</MudButton>
+    </div>
+    <MudText Typo="Typo.caption" Class="d-block mt-2 mud-text-secondary">保存済みのタイムゾーンの今の時刻: @NowText</MudText>
+</MudPaper>

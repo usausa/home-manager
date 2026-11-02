@@ -415,6 +415,9 @@ public static class ApplicationExtensions
         // Entity operation (画面からの機器の操作)
         builder.Services.AddScoped<Components.Entities.EntityOperations>();
 
+        // User session (回線ごとのログイン中のユーザー)
+        builder.Services.AddScoped<Components.UserSession>();
+
         // MudBlazor
         builder.Services.AddMudServices(static options =>
         {
@@ -584,6 +587,7 @@ public static class ApplicationExtensions
         builder.Services.AddScoped<BlazorServiceScope>();
 
         builder.Services.AddCoreServices();
+        builder.Services.AddCoreServiceInterfaces();
 
         // Core (イベントバス・ステートマシン・サービス・エンティティ・インテグレーション)
         builder.Services.AddCoreRuntime();
@@ -698,6 +702,13 @@ public static class ApplicationExtensions
             var setting = app.Services.GetRequiredService<AuthSetting>();
             await app.Services.GetRequiredService<AccountService>().InitializeAsync(setting.InitialAccount, Roles.Administrator);
         }
+
+        // Load core config and onboarding progress (the default core config is saved on first startup)
+        await app.Services.GetRequiredService<ICoreConfigService>().LoadAsync(EventContext.Create(), CancellationToken.None);
+        await app.Services.GetRequiredService<IOnboardingService>().LoadAsync(CancellationToken.None);
+
+        // Prepare system information (uptime starts here)
+        app.Services.GetRequiredService<ISystemInfoService>();
     }
 
     //--------------------------------------------------------------------------------

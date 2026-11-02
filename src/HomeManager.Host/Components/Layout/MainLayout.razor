@@ -1,54 +1,46 @@
 @inherits LayoutComponentBase
 
-<MudThemeProvider Theme="Styles.Theme" />
+@* OSのテーマの切り替えを見張るのはテーマが自動のときだけ *@
+<MudThemeProvider @ref="themeProvider" Theme="Styles.Theme" IsDarkMode="isDarkMode" ObserveSystemDarkModeChange="IsAutoTheme" />
 <MudPopoverProvider />
 <MudDialogProvider />
 <MudSnackbarProvider />
 
-<MudLayout>
-    <MudAppBar Elevation="1">
-        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="ToggleDrawer" />
-        <MudText Typo="Typo.h6" Class="ml-2">HomeManager</MudText>
-        <MudSpacer />
-        <AuthorizeView>
-            <Authorized>
-                <MudText Class="mr-4">@context.User.Identity?.Name</MudText>
-                @* ReSharper disable Html.PathError *@
-                <form method="post" action="auth/logout">
-                    <AntiforgeryToken />
-                    <MudIconButton Icon="@Icons.Material.Filled.Logout" Color="Color.Inherit" ButtonType="ButtonType.Submit" />
-                </form>
-                @* ReSharper restore Html.PathError *@
-            </Authorized>
-        </AuthorizeView>
-    </MudAppBar>
-    <MudDrawer @bind-Open="drawerOpen" Elevation="2">
-        <NavMenu />
-    </MudDrawer>
-    <MudMainContent>
-        @* 余白は内側に付ける (MudMainContent に pa-4 を付けると上部バーの分の余白が消え、ページの見出しがバーに隠れる) *@
-        <div class="pa-4">
-            <ErrorBoundary @ref="errorBoundary">
-                <ChildContent>
-                    @Body
-                </ChildContent>
-                <ErrorContent>
-                    <MudAlert Severity="Severity.Error" Class="mb-4">エラーが発生しました。</MudAlert>
-                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Recover">再試行</MudButton>
-                </ErrorContent>
-            </ErrorBoundary>
-        </div>
-    </MudMainContent>
-</MudLayout>
-
-@code {
-    private ErrorBoundary? errorBoundary;
-
-    private bool drawerOpen = true;
-
-    private void ToggleDrawer() => drawerOpen = !drawerOpen;
-
-    private void Recover() => errorBoundary?.Recover();
-
-    protected override void OnParametersSet() => errorBoundary?.Recover();
-}
+@* 初回セットアップが必要か分かるまでは何も出さない (必要なら初回セットアップへ移る) *@
+<Condition Value="ready">
+    <MudLayout>
+        <MudAppBar Elevation="1">
+            <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="ToggleDrawer" />
+            <MudText Typo="Typo.h6" Class="ml-2">HomeManager</MudText>
+            <MudSpacer />
+            <AuthorizeView>
+                <Authorized>
+                    <MudButton Href="profile" Variant="Variant.Text" Color="Color.Inherit" StartIcon="@Icons.Material.Filled.AccountCircle" Class="mr-2 appbar-user">@Session.DisplayName</MudButton>
+                    @* ReSharper disable Html.PathError *@
+                    <form method="post" action="auth/logout">
+                        <AntiforgeryToken />
+                        <MudIconButton Icon="@Icons.Material.Filled.Logout" Color="Color.Inherit" ButtonType="ButtonType.Submit" />
+                    </form>
+                    @* ReSharper restore Html.PathError *@
+                </Authorized>
+            </AuthorizeView>
+        </MudAppBar>
+        <MudDrawer @bind-Open="drawerOpen" Elevation="2">
+            <NavMenu />
+        </MudDrawer>
+        <MudMainContent>
+            @* 余白は内側に付ける (MudMainContent に pa-4 を付けると上部バーの分の余白が消え、ページの見出しがバーに隠れる) *@
+            <div class="pa-4">
+                <ErrorBoundary @ref="errorBoundary">
+                    <ChildContent>
+                        @Body
+                    </ChildContent>
+                    <ErrorContent>
+                        <MudAlert Severity="Severity.Error" Class="mb-4">エラーが発生しました。</MudAlert>
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Recover">再試行</MudButton>
+                    </ErrorContent>
+                </ErrorBoundary>
+            </div>
+        </MudMainContent>
+    </MudLayout>
+</Condition>

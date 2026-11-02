@@ -33,6 +33,9 @@ public sealed partial class OverviewPage
     public required TimeProvider TimeProvider { get; set; }
 
     [Inject]
+    public required ICoreConfigService CoreConfig { get; set; }
+
+    [Inject]
     public required EntityOperations Operations { get; set; }
 
     [Inject]

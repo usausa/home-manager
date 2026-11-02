@@ -46,6 +46,9 @@ public sealed partial class EventToolPage
     public required TimeProvider TimeProvider { get; set; }
 
     [Inject]
+    public required ICoreConfigService CoreConfig { get; set; }
+
+    [Inject]
     public required ServiceContextProvider ContextProvider { get; set; }
 
     [Inject]
@@ -141,7 +144,7 @@ public sealed partial class EventToolPage
         lock (sync)
         {
             number++;
-            buffer.Insert(0, new ReceivedEvent(number, value.EventType, EntityFormatter.FormatTime(value.TimeFired), json));
+            buffer.Insert(0, new ReceivedEvent(number, value.EventType, EntityFormatter.FormatTime(value.TimeFired, CoreConfig.TimeZone), json));
             if (buffer.Count > MaxEvents)
             {
                 buffer.RemoveAt(buffer.Count - 1);

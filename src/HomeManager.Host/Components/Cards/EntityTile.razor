@@ -10,7 +10,7 @@
         </span>
         <div class="entity-tile-text">
             <MudText Typo="Typo.subtitle2" Class="entity-tile-name">@State.Name</MudText>
-            <MudText Typo="Typo.body2" Class="mud-text-secondary">@EntityFormatter.FormatState(State)</MudText>
+            <MudText Typo="Typo.body2" Class="mud-text-secondary">@EntityFormatter.FormatState(State, CoreConfig.TimeZone)</MudText>
         </div>
     </div>
 </MudPaper>

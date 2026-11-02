@@ -46,7 +46,7 @@ public static class EntityFormatter
     public static bool IsAvailable(EntityState state) =>
         state.State != StateValues.Unavailable;
 
-    public static string FormatState(EntityState state) => state.State switch
+    public static string FormatState(EntityState state, TimeZoneInfo zone) => state.State switch
     {
         StateValues.Unavailable => "利用不可",
         StateValues.Unknown => "不明",
@@ -56,7 +56,7 @@ public static class EntityFormatter
             Domains.Switch => FormatOnOff(state.State),
             Domains.BinarySensor => FormatBinarySensor(state.State, GetDeviceClass(state)),
             Domains.Sensor or Domains.Number => FormatValue(state.State, state.GetAttribute(AttributeNames.UnitOfMeasurement) as string),
-            Domains.Button => DateTimeOffset.TryParse(state.State, CultureInfo.InvariantCulture, out var pressed) ? $"{FormatTime(pressed)} に押した" : state.State,
+            Domains.Button => DateTimeOffset.TryParse(state.State, CultureInfo.InvariantCulture, out var pressed) ? $"{FormatTime(pressed, zone)} に押した" : state.State,
             _ => state.State
         }
     };
@@ -157,8 +157,9 @@ public static class EntityFormatter
     // Time / Context
     //--------------------------------------------------------------------------------
 
-    public static string FormatTime(DateTimeOffset value) =>
-        value.ToLocalTime().ToString("yyyy/MM/dd HH:mm:ss", CultureInfo.InvariantCulture);
+    // 全体設定のタイムゾーンで表示する
+    public static string FormatTime(DateTimeOffset value, TimeZoneInfo zone) =>
+        TimeZoneInfo.ConvertTime(value, zone).ToString("yyyy/MM/dd HH:mm:ss", CultureInfo.InvariantCulture);
 
     public static string FormatRelative(DateTimeOffset value, DateTimeOffset now)
     {

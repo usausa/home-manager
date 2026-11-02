@@ -1,5 +1,7 @@
 namespace HomeManager.Components.Entities;
 
+using System.Globalization;
+
 using HomeManager.Domain;
 using HomeManager.Host.Components.Entities;
 
@@ -8,6 +10,8 @@ using MudBlazor;
 public sealed class EntityFormatterTests
 {
     private static readonly DateTimeOffset Now = new(2026, 11, 1, 9, 0, 0, TimeSpan.Zero);
+
+    private static readonly TimeZoneInfo Tokyo = TimeZones.Find("Asia/Tokyo");
 
     [Theory]
     [InlineData("light.ceiling", "on", null, null, "オン")]
@@ -36,7 +40,7 @@ public sealed class EntityFormatterTests
         var state = new EntityState(entityId, value, attributes, Now, Now, Now, EventContext.Create());
 
         // Act
-        var text = EntityFormatter.FormatState(state);
+        var text = EntityFormatter.FormatState(state, TimeZoneInfo.Utc);
 
         // Assert
         Assert.Equal(expected, text);
@@ -49,9 +53,22 @@ public sealed class EntityFormatterTests
         var state = new EntityState("light.ceiling", "on", new Dictionary<string, object?> { [AttributeNames.Brightness] = 128 }, Now, Now, Now, EventContext.Create());
 
         // Act & Assert
-        Assert.Equal("オン・50%", EntityFormatter.FormatState(state));
+        Assert.Equal("オン・50%", EntityFormatter.FormatState(state, TimeZoneInfo.Utc));
         Assert.Equal(Icons.Material.Filled.Lightbulb, EntityFormatter.GetIcon(state));
         Assert.Equal(Color.Warning, EntityFormatter.GetColor(state));
+    }
+
+    // 時刻は全体設定のタイムゾーンで出す (UTCの09:00は東京の18:00)
+    [Fact]
+    public void FormatTimeUsesTimeZone()
+    {
+        // Arrange
+        var button = new EntityState("button.chime", Now.ToString("O", CultureInfo.InvariantCulture), new Dictionary<string, object?>(), Now, Now, Now, EventContext.Create());
+
+        // Act & Assert
+        Assert.Equal("2026/11/01 09:00:00", EntityFormatter.FormatTime(Now, TimeZoneInfo.Utc));
+        Assert.Equal("2026/11/01 18:00:00", EntityFormatter.FormatTime(Now, Tokyo));
+        Assert.Equal("2026/11/01 18:00:00 に押した", EntityFormatter.FormatState(button, Tokyo));
     }
 
     [Fact]

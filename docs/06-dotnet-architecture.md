@@ -406,6 +406,8 @@ public interface ITriggerPlatform
 | 🧵 Context の引き継ぎ | — | サービスで操作したエンティティに 5 秒だけ操作者の Context を覚えさせる（HA の `async_set_context`） | 「誰が変えたか」を状態に残す（詳細ダイアログの「操作」） |
 | 📣 購読 | `Subscribe(handler, filter, options)` | 同じ。購読者ごとに `Channel` と処理タスク、`Capacity` を付けると溢れたら古いものを捨てる | 画面は合図だけ受け取れればよい |
 | 🗃️ 属性の比較 | — | 中身で比べる（`AttributeComparer`。配列・入れ子の辞書・JSON も） | 同じ値なら `state_reported`、違えば `state_changed`（HA と同じ） |
+| 🧩 DB を使うサービス（2026-11-02） | — | インターフェース（`ICoreConfigService` など）+ 実装。実装は `AddCoreServices`（名前が `Service` で終わるクラスを登録）、インターフェースは `AddCoreServiceInterfaces` で同じ実装を引く | 画面のテスト（bUnit）で代わりのものに差し替える |
+| 👤 ログイン中のユーザー（2026-11-02） | — | Host の `UserSession`（回線ごと）。表示名・テーマ・初回セットアップが必要かを持ち、保存したら `Changed` で知らせる | 上部バーとテーマを保存した直後に変える |
 
 ### 🤖 6-4. オートメーションの実行エンジン（イメージ）
 

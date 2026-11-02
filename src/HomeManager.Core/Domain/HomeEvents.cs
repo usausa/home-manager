@@ -63,6 +63,15 @@ public sealed record ComponentLoadedEvent(
     public string EventType => EventTypes.ComponentLoaded;
 }
 
+// 全体設定が変わった (Dataは変わった項目だけ。キーはsnake_case)
+public sealed record CoreConfigUpdatedEvent(
+    IReadOnlyDictionary<string, object?> Data,
+    EventContext Context,
+    DateTimeOffset TimeFired) : IHomeEvent
+{
+    public string EventType => EventTypes.CoreConfigUpdated;
+}
+
 // 起動と停止 (homemanager_start / homemanager_started / homemanager_stop)
 public sealed record SystemEvent(
     string EventType,

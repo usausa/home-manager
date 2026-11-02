@@ -23,6 +23,9 @@ public sealed partial class EntityTile
     [Parameter]
     public EventCallback<EntityState> OnOpen { get; set; }
 
+    [Inject]
+    public required ICoreConfigService CoreConfig { get; set; }
+
     //--------------------------------------------------------------------------------
     // Property
     //--------------------------------------------------------------------------------
