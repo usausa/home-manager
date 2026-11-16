@@ -77,7 +77,7 @@ HomeManager.slnx
 
 | もの | 版・備考 |
 |---|---|
-| .NET SDK | 10.0 |
+| .NET SDK | 11.0 |
 | Aspire CLI | 13.5 以上（AppHost が `AspireUseCliBundle=true` のため必須） |
 | コンテナの実行環境 | Docker か Podman（Aspire で Mosquitto を動かすときだけ。DB とテストには要らない） |
 
@@ -112,7 +112,7 @@ dotnet run --project tests/HomeManager.IntegrationTests
 
 ```powershell
 dotnet build tests/HomeManager.E2ETests
-pwsh tests/HomeManager.E2ETests/bin/Debug/net10.0/playwright.ps1 install
+pwsh tests/HomeManager.E2ETests/bin/Debug/net11.0/playwright.ps1 install
 dotnet run --project tests/HomeManager.E2ETests
 ```
 

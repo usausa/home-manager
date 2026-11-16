@@ -59,7 +59,9 @@ public sealed class UserSession
     // 変更を保存した後に読み直し、表示中の部品に知らせる
     public async Task ReloadAsync()
     {
+#pragma warning disable BL0013
         var state = await authenticationStateProvider.GetAuthenticationStateAsync();
+#pragma warning restore BL0013
         var identity = state.User.Identity;
         var name = (identity?.IsAuthenticated ?? false) ? identity.Name : null;
 

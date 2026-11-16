@@ -27,7 +27,9 @@ public sealed class AppCircuitHandler : CircuitHandler
 
     public override async Task OnCircuitOpenedAsync(Circuit circuit, CancellationToken cancellationToken)
     {
+#pragma warning disable BL0013
         var state = await authenticationStateProvider.GetAuthenticationStateAsync();
+#pragma warning restore BL0013
         var user = state.User.Identity?.Name;
         tracker.Add(new CircuitInfo(circuit.Id, user, timeProvider.GetLocalNow(), true));
         log.InfoCircuitOpened(circuit.Id, user, tracker.Count);

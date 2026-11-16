@@ -1,8 +1,8 @@
-﻿<Project Sdk="Aspire.AppHost.Sdk/13.6.1">
+﻿<Project Sdk="Aspire.AppHost.Sdk/13.6.5">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net10.0</TargetFramework>
+    <TargetFramework>net11.0</TargetFramework>
     <CodeAnalysisRuleSet>..\..\Analyzers.ruleset</CodeAnalysisRuleSet>
     <AspireUseCliBundle>true</AspireUseCliBundle>
     <UserSecretsId>61f3e72b-7bea-491a-82c1-55c9881b1dfc</UserSecretsId>

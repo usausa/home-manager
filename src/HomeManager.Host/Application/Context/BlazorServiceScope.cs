@@ -24,7 +24,9 @@ public sealed class BlazorServiceScope
     // AsyncLocal は非同期メソッドの中で設定しても呼び出し元へ伝わらないため、ここでは値の生成だけを用意し、Begin は境界のメソッドが直接呼ぶ
     public async ValueTask<Func<ServiceContext>> PrepareAsync()
     {
+#pragma warning disable BL0013
         var state = await authenticationStateProvider.GetAuthenticationStateAsync();
+#pragma warning restore BL0013
         var userId = HttpServiceContext.GetUserId(state.User);
         return () => new ServiceContext(timeProvider.GetLocalNow(), userId);
     }

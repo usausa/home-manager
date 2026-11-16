@@ -108,7 +108,7 @@ public sealed class StateMachine : IStateMachine
     private static FrozenDictionary<string, object?> Freeze(IReadOnlyDictionary<string, object?>? attributes) =>
         attributes switch
         {
-            null or { Count: 0 } => FrozenDictionary<string, object?>.Empty,
+            null or { Count: 0 } => [],
             FrozenDictionary<string, object?> frozen => frozen,
             _ => attributes.ToFrozenDictionary(StringComparer.Ordinal)
         };
