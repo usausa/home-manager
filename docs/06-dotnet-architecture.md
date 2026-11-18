@@ -186,7 +186,7 @@ flowchart TB
 ```text
 incubator-home/
 ├── HomeManager.slnx
-├── Directory.Build.props / .editorconfig / Analyzers.ruleset   ← テンプレートのまま
+├── Directory.Build.props / .editorconfig / .globalconfig   ← テンプレートのまま
 ├── docs/                                  📚 この調査ドキュメント
 ├── deploy/                                🆕 compose.yaml（Mosquitto / Zigbee2MQTT）・systemd ユニット
 ├── src/
